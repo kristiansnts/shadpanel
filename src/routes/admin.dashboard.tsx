@@ -1,3 +1,4 @@
+import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { AppSidebar } from "@/components/app-sidebar"
 import { DarkModeToggle } from "@/components/dark-mode-toggle"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -17,7 +18,25 @@ import {
 } from "@/components/ui/sidebar"
 import { NavigationProvider } from "@/contexts/navigation-context"
 
+export const Route = createFileRoute('/admin/dashboard')({
+  beforeLoad: async () => {
+    const token = localStorage.getItem('authToken')
+    if (!token) {
+      throw redirect({
+        to: '/admin/login',
+      })
+    }
+  },
+  component: Dashboard,
+})
+
 function DashboardContent() {
+  const router = useRouter()
+
+  const handleLogout = () => {
+    localStorage.removeItem('authToken')
+    router.navigate({ to: '/admin/login' })
+  }
   
   return (
     <SidebarProvider>
@@ -48,7 +67,7 @@ function DashboardContent() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => console.log('Logout clicked')}>
+                <DropdownMenuItem onClick={handleLogout}>
                   Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -71,7 +90,7 @@ function DashboardContent() {
                       <h2 className="text-sm font-semibold">Welcome</h2>
                       <p className="text-xs text-gray-600">Demo User</p>
                     </div>
-                    <button className="ml-auto px-3 py-1.5 text-xs border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-1">
+                    <button onClick={handleLogout} className="ml-auto px-3 py-1.5 text-xs border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-1 hover:cursor-pointer">
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                       </svg>
@@ -112,7 +131,7 @@ function DashboardContent() {
   )
 }
 
-export default function Page() {
+function Dashboard() {
   return (
     <NavigationProvider>
       <DashboardContent />
