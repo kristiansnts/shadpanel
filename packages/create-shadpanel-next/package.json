@@ -1,0 +1,59 @@
+{
+  "name": "create-shadpanel-next",
+  "version": "0.1.0",
+  "description": "Create a new Next.js admin panel with ShadPanel - Use via npx create-shadpanel-next@latest my-app",
+  "type": "module",
+  "bin": {
+    "create-shadpanel-next": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "templates",
+    "components",
+    "lib",
+    "hooks",
+    "contexts",
+    "README.md"
+  ],
+  "keywords": [
+    "nextjs",
+    "admin-panel",
+    "form-builder",
+    "data-table",
+    "react",
+    "typescript",
+    "tailwindcss",
+    "shadcn-ui",
+    "cli",
+    "npx",
+    "create-app",
+    "starter",
+    "boilerplate"
+  ],
+  "author": "Kristian Santoso <epafroditus.kristian@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kristiansnts/shadpanel",
+    "directory": "packages/create-shadpanel-next"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^14.0.1",
+    "fs-extra": "^11.3.2",
+    "ora": "^9.0.0",
+    "prompts": "^2.4.2"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20",
+    "@types/prompts": "^2.4.9",
+    "tsup": "^8.5.0",
+    "typescript": "^5"
+  }
+}

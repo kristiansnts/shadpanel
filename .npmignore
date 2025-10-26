@@ -1,0 +1,6 @@
+.claude
+.DS_Store
+*.log
+npm-debug.log*
+.vscode
+.idea

@@ -1,0 +1,29 @@
+{
+  "name": "create-shadpanel-next",
+  "version": "0.1.0",
+  "description": "CLI tool to scaffold a new shadpanel Next.js project",
+  "main": "index.js",
+  "bin": {
+    "create-shadpanel-next": "./cli.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "panel",
+    "ui",
+    "component",
+    "shadcn",
+    "react",
+    "nextjs",
+    "cli",
+    "scaffold"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "homepage": ""
+}
