@@ -351,6 +351,7 @@ All data table components are prefixed with `Table`:
 - [Tailwind CSS](https://tailwindcss.com) - Styling
 - [shadcn/ui](https://ui.shadcn.com) - Base components
 - [TypeScript](https://www.typescriptlang.org) - Type safety
+- [Prisma](https://www.prisma.io) - Database ORM
 
 
 ## Contributing

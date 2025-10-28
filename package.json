@@ -1,12 +1,11 @@
 {
   "name": "shadpanel",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "description": "ShadPanel CLI - Build admin panels with Next.js and shadcn/ui",
   "main": "index.cjs",
   "type": "module",
   "bin": {
-    "shadpanel": "./dist/cli.mjs",
-    "create-shadpanel-next": "./cli.cjs"
+    "shadpanel": "./dist/cli.mjs"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -16,8 +15,11 @@
   },
   "files": [
     "dist",
-    "cli.cjs",
-    "index.cjs",
+    "templates",
+    "components",
+    "lib",
+    "hooks",
+    "contexts",
     "README.md"
   ],
   "keywords": [

@@ -55,7 +55,14 @@ export const logger = {
   },
 
   // Print completion message
-  complete: (projectName: string, devCommand: string, installationType?: string, isCurrentDir?: boolean) => {
+  complete: (
+    projectName: string,
+    devCommand: string,
+    installationType?: string,
+    isCurrentDir?: boolean,
+    skipInstall?: boolean,
+    packageManager?: string
+  ) => {
     console.log()
 
     // Different message based on installation type
@@ -75,6 +82,15 @@ export const logger = {
     // Only show "cd" if not current directory
     if (!isCurrentDir) {
       console.log(chalk.cyan(`  cd ${projectName}`))
+    }
+
+    // Show install command if dependencies were skipped
+    if (skipInstall && packageManager) {
+      const installCmd = packageManager === "npm" ? "npm install"
+        : packageManager === "yarn" ? "yarn install"
+        : packageManager === "bun" ? "bun install"
+        : `${packageManager} install`
+      console.log(chalk.cyan(`  ${installCmd}`))
     }
 
     console.log(chalk.cyan(`  ${devCommand}`))
