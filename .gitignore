@@ -6,6 +6,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Packages (monorepo workspace)
+packages/
+
 # Build outputs
 dist/
 build/
