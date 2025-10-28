@@ -1,14 +1,25 @@
 {
-  "name": "create-shadpanel-next",
+  "name": "shadpanel",
   "version": "0.1.0",
-  "description": "CLI tool to scaffold a new shadpanel Next.js project",
-  "main": "index.js",
+  "description": "ShadPanel CLI - Build admin panels with Next.js and shadcn/ui",
+  "main": "index.cjs",
+  "type": "module",
   "bin": {
-    "create-shadpanel-next": "./cli.js"
+    "shadpanel": "./dist/cli.mjs",
+    "create-shadpanel-next": "./cli.cjs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:cli": "tsup cli/index.ts --format esm --dts --clean && mv dist/index.js dist/cli.mjs",
+    "dev:cli": "tsx cli/index.ts",
+    "prepublishOnly": "npm run build:cli"
   },
+  "files": [
+    "dist",
+    "cli.cjs",
+    "index.cjs",
+    "README.md"
+  ],
   "keywords": [
     "panel",
     "ui",
@@ -25,5 +36,19 @@
     "type": "git",
     "url": ""
   },
-  "homepage": ""
+  "homepage": "",
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^14.0.2",
+    "fs-extra": "^11.3.2",
+    "ora": "^9.0.0",
+    "prompts": "^2.4.2"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/prompts": "^2.4.9",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
 }
