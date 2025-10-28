@@ -4,3 +4,10 @@
 npm-debug.log*
 .vscode
 .idea
+node_modules
+cli/
+tsup.config.ts
+tsconfig.json
+.git
+.gitignore
+packages/

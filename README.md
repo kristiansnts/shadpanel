@@ -9,8 +9,28 @@
 Create a new admin panel in seconds:
 
 ```bash
+# Using the main CLI (recommended)
+shadpanel init my-app
+
+# Or directly with create-shadpanel-next
 npx create-shadpanel-next my-app
 ```
+
+### Database Setup (Optional)
+
+After creating your project, you can easily set up Prisma for database management:
+
+```bash
+cd my-app
+shadpanel db init
+```
+
+This will:
+- ✅ Prompt you to choose your database (MySQL, PostgreSQL, SQLite, or MongoDB)
+- ✅ Create `.env` file with database configuration
+- ✅ Set up Prisma schema template
+- ✅ Install Prisma packages
+- ✅ Ready to define your models and run migrations
 
 This will:
 - ✅ Set up complete Next.js 15 project structure
@@ -36,17 +56,79 @@ This will:
 
 ## Usage
 
+### Installation
+
+```bash
+# Install globally (recommended)
+npm install -g shadpanel
+
+# Or use with npx (no installation needed)
+npx shadpanel init my-app
+```
+
 ### Create New Project
 
 ```bash
-npx create-shadpanel-next my-app
+# Initialize a new project
+shadpanel init my-app
+
+# Check version
+shadpanel --version
+
+# Get help
+shadpanel --help
 ```
 
-Or with a specific project name:
+### Database Commands
+
+ShadPanel includes powerful database management commands powered by Prisma:
 
 ```bash
-npx create-shadpanel-next my-awesome-project
+# Initialize database configuration
+shadpanel db init
+
+# Generate Prisma schema from template
+shadpanel db generate-schema
+
+# Generate Prisma Client
+shadpanel db generate
+
+# Run migrations (uses existing schema.prisma)
+shadpanel db migrate [name]
+
+# Run migrations and regenerate from template first
+shadpanel db migrate [name] --regenerate
+
+# Push schema to database (no migration files)
+shadpanel db push
+
+# Push and regenerate from template first
+shadpanel db push --regenerate
+
+# Pull schema from existing database
+shadpanel db pull
+
+# Open Prisma Studio
+shadpanel db studio
+
+# Seed database
+shadpanel db seed
+
+# Reset database
+shadpanel db reset
 ```
+
+### Database Workflow
+
+**Option 1: Template-based workflow** (for reusable schemas)
+1. Edit `prisma/schema.prisma.template` with your models
+2. Run `shadpanel db generate-schema` to generate `schema.prisma`
+3. Run `shadpanel db migrate --regenerate` to apply changes
+
+**Option 2: Direct editing** (for one-time changes)
+1. Run `shadpanel db generate-schema` once to create `schema.prisma`
+2. Edit `prisma/schema.prisma` directly
+3. Run `shadpanel db migrate` to apply changes (without --regenerate)
 
 ### Example Project Structure
 
