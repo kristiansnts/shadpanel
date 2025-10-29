@@ -16,6 +16,7 @@ export interface InitAnswers {
   demoTypes: string[]
   initGit: boolean
   skipInstall: boolean
+  mergeWithExisting: boolean
 }
 
 // Detect available package managers
@@ -55,6 +56,10 @@ export async function promptInitQuestions(
 
   // If --yes flag is used, skip all prompts and use defaults/CLI options
   if (cliOptions.yes) {
+    // Check if directory exists before returning
+    const projectDir = path.resolve(process.cwd(), defaultProjectName)
+    const directoryExists = fs.existsSync(projectDir)
+
     return {
       projectName: defaultProjectName,
       installationType,
@@ -65,8 +70,13 @@ export async function promptInitQuestions(
       demoTypes: cliOptions.noDemos ? [] : ["form", "table", "notification"],
       initGit: cliOptions.disableGit ? false : true,
       skipInstall: cliOptions.skipInstall || false,
+      mergeWithExisting: directoryExists, // Auto-merge if --yes flag and directory exists
     }
   }
+
+  // Check if project directory exists (for both CLI and prompt)
+  const projectDir = path.resolve(process.cwd(), initialProjectName || defaultProjectName)
+  const directoryExists = fs.existsSync(projectDir)
 
   // Build questions array, skipping those provided via CLI
   const questions = [
@@ -79,14 +89,16 @@ export async function promptInitQuestions(
       validate: (value: string) => {
         if (!value) return "Project name is required"
         if (value.includes(" ")) return "Project name cannot contain spaces"
-
-        // Check if directory exists
-        if (fs.existsSync(path.resolve(process.cwd(), value))) {
-          return `Directory "${value}" already exists`
-        }
         return true
       },
     },
+    // Ask if user wants to merge with existing directory
+    (directoryExists && !cliOptions.yes) ? {
+      type: "confirm" as const,
+      name: "mergeWithExisting",
+      message: `Directory "${initialProjectName || defaultProjectName}" already exists. Do you want to merge ShadPanel into this existing project?`,
+      initial: true,
+    } : null,
     // Installation type (skip if provided via CLI)
     (cliOptions.fullPanel || cliOptions.authComponents || cliOptions.componentsOnly) ? null : {
       type: "select" as const,
@@ -193,6 +205,12 @@ export async function promptInitQuestions(
       },
     })
 
+    // If directory exists and user declined to merge, cancel operation
+    if (directoryExists && promptAnswers.mergeWithExisting === false) {
+      console.log("\nOperation cancelled. Please choose a different project name or remove the existing directory.")
+      return null
+    }
+
     // Merge CLI options with prompt answers
     const answers: InitAnswers = {
       projectName: initialProjectName || promptAnswers.projectName || defaultProjectName,
@@ -204,6 +222,7 @@ export async function promptInitQuestions(
       demoTypes: promptAnswers.demoTypes || (cliOptions.noDemos ? [] : ["form", "table", "notification"]),
       initGit: promptAnswers.initGit !== undefined ? promptAnswers.initGit : !cliOptions.disableGit,
       skipInstall: cliOptions.skipInstall || false,
+      mergeWithExisting: promptAnswers.mergeWithExisting !== undefined ? promptAnswers.mergeWithExisting : false,
     }
 
     // Set authentication based on installation type or noAuth flag

@@ -89,7 +89,13 @@ export async function initCommand(projectName?: string, options: CliOptions = {}
     process.exit(1)
   }
 
-  logger.info(`Setting up your project in: ${targetDir}`)
+  // Show appropriate message based on merge status
+  if (answers.mergeWithExisting) {
+    logger.info(`Merging ShadPanel into existing project: ${targetDir}`)
+    logger.info("Existing files will be preserved")
+  } else {
+    logger.info(`Setting up your project in: ${targetDir}`)
+  }
   logger.newline()
 
   // Generate a secure random secret for NextAuth
@@ -113,33 +119,36 @@ export async function initCommand(projectName?: string, options: CliOptions = {}
     await fs.ensureDir(targetDir)
     spinner1.succeed("Project structure created")
 
-    // Step 2: Copy base template (only for full-panel)
-    if (answers.installationType === "full-panel") {
+    // Step 2: Copy base template (only for full-panel and when not merging)
+    // When merging with existing project, skip base template to preserve existing Next.js structure
+    if (answers.installationType === "full-panel" && !answers.mergeWithExisting) {
       const spinner2 = logger.spinner("Copying base template files...")
       spinner2.start()
       await copyBaseTemplate(templatesDir, targetDir, variables)
       spinner2.succeed("Base template files copied")
+    } else if (answers.mergeWithExisting) {
+      logger.info("Skipping base template (preserving existing Next.js structure)")
     }
 
-    // Step 3: Copy config files
+    // Step 3: Copy config files (preserve existing if merging)
     const spinner3 = logger.spinner("Setting up configuration...")
     spinner3.start()
-    await copyConfigTemplate(templatesDir, targetDir, variables)
+    await copyConfigTemplate(templatesDir, targetDir, variables, answers.mergeWithExisting)
     spinner3.succeed("Configuration files created")
 
-    // Step 4: Copy auth template if needed
+    // Step 4: Copy auth template if needed (preserve existing if merging)
     if (answers.authentication) {
       const spinner4 = logger.spinner("Adding authentication system...")
       spinner4.start()
-      await copyAuthTemplate(templatesDir, targetDir, variables)
+      await copyAuthTemplate(templatesDir, targetDir, variables, answers.mergeWithExisting)
       spinner4.succeed("Authentication system added")
     }
 
-    // Step 5: Copy demo template if needed (only for full-panel)
+    // Step 5: Copy demo template if needed (only for full-panel, preserve existing if merging)
     if (answers.installationType === "full-panel" && answers.demos) {
       const spinner5 = logger.spinner("Adding demo pages...")
       spinner5.start()
-      await copyDemoTemplate(templatesDir, targetDir, variables)
+      await copyDemoTemplate(templatesDir, targetDir, variables, answers.mergeWithExisting)
       await mergeMenuConfigs(targetDir, true)
       spinner5.succeed("Demo pages added")
     }

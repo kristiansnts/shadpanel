@@ -17,7 +17,8 @@ export interface TemplateVariables {
 export async function copyTemplateFiles(
   templateDir: string,
   targetDir: string,
-  variables: TemplateVariables
+  variables: TemplateVariables,
+  preserveExisting = false
 ): Promise<void> {
   await fs.ensureDir(targetDir)
 
@@ -29,8 +30,13 @@ export async function copyTemplateFiles(
 
     if (file.isDirectory()) {
       // Recursively copy directories
-      await copyTemplateFiles(sourcePath, targetPath, variables)
+      await copyTemplateFiles(sourcePath, targetPath, variables, preserveExisting)
     } else if (file.isFile()) {
+      // Skip if file exists and we're preserving existing files
+      if (preserveExisting && await fs.pathExists(targetPath)) {
+        continue
+      }
+
       // Read file content
       let content = await fs.readFile(sourcePath, "utf-8")
 
@@ -131,10 +137,11 @@ export async function mergeTemplates(
 export async function copyBaseTemplate(
   templatesDir: string,
   targetDir: string,
-  variables: TemplateVariables
+  variables: TemplateVariables,
+  preserveExisting = false
 ): Promise<void> {
   const baseDir = path.join(templatesDir, "base")
-  await copyTemplateFiles(baseDir, targetDir, variables)
+  await copyTemplateFiles(baseDir, targetDir, variables, preserveExisting)
 }
 
 /**
@@ -143,10 +150,11 @@ export async function copyBaseTemplate(
 export async function copyAuthTemplate(
   templatesDir: string,
   targetDir: string,
-  variables: TemplateVariables
+  variables: TemplateVariables,
+  preserveExisting = false
 ): Promise<void> {
   const authDir = path.join(templatesDir, "auth")
-  await copyTemplateFiles(authDir, targetDir, variables)
+  await copyTemplateFiles(authDir, targetDir, variables, preserveExisting)
 }
 
 /**
@@ -155,10 +163,11 @@ export async function copyAuthTemplate(
 export async function copyDemoTemplate(
   templatesDir: string,
   targetDir: string,
-  variables: TemplateVariables
+  variables: TemplateVariables,
+  preserveExisting = false
 ): Promise<void> {
   const demoDir = path.join(templatesDir, "demo")
-  await copyTemplateFiles(demoDir, targetDir, variables)
+  await copyTemplateFiles(demoDir, targetDir, variables, preserveExisting)
 }
 
 /**
@@ -167,7 +176,8 @@ export async function copyDemoTemplate(
 export async function copyConfigTemplate(
   templatesDir: string,
   targetDir: string,
-  variables: TemplateVariables
+  variables: TemplateVariables,
+  preserveExisting = false
 ): Promise<void> {
   const configDir = path.join(templatesDir, "config")
 
@@ -193,6 +203,11 @@ export async function copyConfigTemplate(
     }
 
     if (file.isFile()) {
+      // Skip if file exists and we're preserving existing files
+      if (preserveExisting && await fs.pathExists(targetPath)) {
+        continue
+      }
+
       let content = await fs.readFile(sourcePath, "utf-8")
       content = processTemplate(content, variables)
       await fs.writeFile(targetPath, content, "utf-8")

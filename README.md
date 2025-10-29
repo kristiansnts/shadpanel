@@ -72,11 +72,53 @@ npx shadpanel init my-app
 # Initialize a new project
 shadpanel init my-app
 
+# Merge into an existing Next.js project
+shadpanel init .
+
 # Check version
 shadpanel --version
 
 # Get help
 shadpanel --help
+```
+
+### Merging with Existing Projects
+
+ShadPanel can merge into existing Next.js projects, preserving your existing files:
+
+```bash
+# Navigate to your existing Next.js project
+cd my-existing-nextjs-app
+
+# Initialize ShadPanel (will prompt for merge confirmation)
+shadpanel init .
+
+# Or specify a directory name
+shadpanel init my-app
+```
+
+When merging:
+- ✅ **Existing files are preserved** - Your layout, pages, and components won't be overwritten
+- ✅ **Only adds new files** - Only ShadPanel components and utilities are added
+- ✅ **Safe merge** - You'll be prompted before any changes are made
+- ✅ **Perfect for components-only** - Use `--components-only` to add just the UI library
+
+Example workflow:
+```bash
+# Already have a Next.js app
+cd my-app
+
+# Add ShadPanel components only (keeps your existing structure)
+shadpanel init . --components-only
+
+# This will skip your existing:
+# - app/page.tsx (your home page)
+# - app/layout.tsx (your root layout)
+# - package.json (your dependencies)
+# And only add new:
+# - components/ui/* (ShadPanel components)
+# - lib/utils.ts (utility functions)
+# - hooks/* (React hooks)
 ```
 
 ### Database Commands
