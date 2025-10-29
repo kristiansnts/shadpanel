@@ -1,13 +1,28 @@
+# Claude Code settings
 .claude
+
+# OS files
 .DS_Store
+
+# Logs
 *.log
 npm-debug.log*
+
+# IDE
 .vscode
 .idea
+
+# Dependencies
 node_modules
+
+# CLI and config files
 cli/
 tsup.config.ts
 tsconfig.json
+
+# Git files
 .git
 .gitignore
+
+# Packages
 packages/
