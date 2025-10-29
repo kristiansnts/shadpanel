@@ -36,6 +36,8 @@ async function promptInitQuestions(initialProjectName, cliOptions = {}) {
   if (cliOptions.google) authProviders.push("google");
   if (cliOptions.github) authProviders.push("github");
   if (cliOptions.yes) {
+    const projectDir2 = path.resolve(process.cwd(), defaultProjectName);
+    const directoryExists2 = fs.existsSync(projectDir2);
     return {
       projectName: defaultProjectName,
       installationType,
@@ -45,9 +47,13 @@ async function promptInitQuestions(initialProjectName, cliOptions = {}) {
       demos: cliOptions.noDemos ? false : installationType === "full-panel",
       demoTypes: cliOptions.noDemos ? [] : ["form", "table", "notification"],
       initGit: cliOptions.disableGit ? false : true,
-      skipInstall: cliOptions.skipInstall || false
+      skipInstall: cliOptions.skipInstall || false,
+      mergeWithExisting: directoryExists2
+      // Auto-merge if --yes flag and directory exists
     };
   }
+  const projectDir = path.resolve(process.cwd(), initialProjectName || defaultProjectName);
+  const directoryExists = fs.existsSync(projectDir);
   const questions = [
     // Project name (skip if provided as argument)
     initialProjectName ? null : {
@@ -58,12 +64,16 @@ async function promptInitQuestions(initialProjectName, cliOptions = {}) {
       validate: (value) => {
         if (!value) return "Project name is required";
         if (value.includes(" ")) return "Project name cannot contain spaces";
-        if (fs.existsSync(path.resolve(process.cwd(), value))) {
-          return `Directory "${value}" already exists`;
-        }
         return true;
       }
     },
+    // Ask if user wants to merge with existing directory
+    directoryExists && !cliOptions.yes ? {
+      type: "confirm",
+      name: "mergeWithExisting",
+      message: `Directory "${initialProjectName || defaultProjectName}" already exists. Do you want to merge ShadPanel into this existing project?`,
+      initial: true
+    } : null,
     // Installation type (skip if provided via CLI)
     cliOptions.fullPanel || cliOptions.authComponents || cliOptions.componentsOnly ? null : {
       type: "select",
@@ -167,6 +177,10 @@ async function promptInitQuestions(initialProjectName, cliOptions = {}) {
         throw new Error("User cancelled the operation");
       }
     });
+    if (directoryExists && promptAnswers.mergeWithExisting === false) {
+      console.log("\nOperation cancelled. Please choose a different project name or remove the existing directory.");
+      return null;
+    }
     const answers = {
       projectName: initialProjectName || promptAnswers.projectName || defaultProjectName,
       installationType: promptAnswers.installationType || installationType,
@@ -176,7 +190,8 @@ async function promptInitQuestions(initialProjectName, cliOptions = {}) {
       demos: promptAnswers.demos !== void 0 ? promptAnswers.demos : cliOptions.noDemos ? false : installationType === "full-panel",
       demoTypes: promptAnswers.demoTypes || (cliOptions.noDemos ? [] : ["form", "table", "notification"]),
       initGit: promptAnswers.initGit !== void 0 ? promptAnswers.initGit : !cliOptions.disableGit,
-      skipInstall: cliOptions.skipInstall || false
+      skipInstall: cliOptions.skipInstall || false,
+      mergeWithExisting: promptAnswers.mergeWithExisting !== void 0 ? promptAnswers.mergeWithExisting : false
     };
     if (cliOptions.noAuth) {
       answers.authentication = false;
@@ -284,15 +299,18 @@ var logger = {
 // cli/utils/files.ts
 import fs2 from "fs-extra";
 import path2 from "path";
-async function copyTemplateFiles(templateDir, targetDir, variables) {
+async function copyTemplateFiles(templateDir, targetDir, variables, preserveExisting = false) {
   await fs2.ensureDir(targetDir);
   const files = await fs2.readdir(templateDir, { withFileTypes: true });
   for (const file of files) {
     const sourcePath = path2.join(templateDir, file.name);
     const targetPath = path2.join(targetDir, file.name);
     if (file.isDirectory()) {
-      await copyTemplateFiles(sourcePath, targetPath, variables);
+      await copyTemplateFiles(sourcePath, targetPath, variables, preserveExisting);
     } else if (file.isFile()) {
+      if (preserveExisting && await fs2.pathExists(targetPath)) {
+        continue;
+      }
       let content = await fs2.readFile(sourcePath, "utf-8");
       content = processTemplate(content, variables);
       await fs2.ensureDir(path2.dirname(targetPath));
@@ -333,19 +351,19 @@ function processConditional(content, key, include) {
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
-async function copyBaseTemplate(templatesDir, targetDir, variables) {
+async function copyBaseTemplate(templatesDir, targetDir, variables, preserveExisting = false) {
   const baseDir = path2.join(templatesDir, "base");
-  await copyTemplateFiles(baseDir, targetDir, variables);
+  await copyTemplateFiles(baseDir, targetDir, variables, preserveExisting);
 }
-async function copyAuthTemplate(templatesDir, targetDir, variables) {
+async function copyAuthTemplate(templatesDir, targetDir, variables, preserveExisting = false) {
   const authDir = path2.join(templatesDir, "auth");
-  await copyTemplateFiles(authDir, targetDir, variables);
+  await copyTemplateFiles(authDir, targetDir, variables, preserveExisting);
 }
-async function copyDemoTemplate(templatesDir, targetDir, variables) {
+async function copyDemoTemplate(templatesDir, targetDir, variables, preserveExisting = false) {
   const demoDir = path2.join(templatesDir, "demo");
-  await copyTemplateFiles(demoDir, targetDir, variables);
+  await copyTemplateFiles(demoDir, targetDir, variables, preserveExisting);
 }
-async function copyConfigTemplate(templatesDir, targetDir, variables) {
+async function copyConfigTemplate(templatesDir, targetDir, variables, preserveExisting = false) {
   const configDir = path2.join(templatesDir, "config");
   const files = await fs2.readdir(configDir, { withFileTypes: true });
   for (const file of files) {
@@ -361,6 +379,9 @@ async function copyConfigTemplate(templatesDir, targetDir, variables) {
       await fs2.ensureDir(path2.join(targetDir, "app"));
     }
     if (file.isFile()) {
+      if (preserveExisting && await fs2.pathExists(targetPath)) {
+        continue;
+      }
       let content = await fs2.readFile(sourcePath, "utf-8");
       content = processTemplate(content, variables);
       await fs2.writeFile(targetPath, content, "utf-8");
@@ -523,7 +544,7 @@ async function initGitRepository(projectDir) {
 // package.json
 var package_default = {
   name: "shadpanel",
-  version: "1.1.0",
+  version: "1.1.1",
   description: "ShadPanel CLI - Build admin panels with Next.js and shadcn/ui",
   main: "index.cjs",
   type: "module",
@@ -601,7 +622,12 @@ async function initCommand(projectName, options = {}) {
     logger.error("Templates directory not found. This may be a package issue.");
     process.exit(1);
   }
-  logger.info(`Setting up your project in: ${targetDir}`);
+  if (answers.mergeWithExisting) {
+    logger.info(`Merging ShadPanel into existing project: ${targetDir}`);
+    logger.info("Existing files will be preserved");
+  } else {
+    logger.info(`Setting up your project in: ${targetDir}`);
+  }
   logger.newline();
   const nextAuthSecret = randomBytes(32).toString("base64");
   const variables = {
@@ -618,26 +644,28 @@ async function initCommand(projectName, options = {}) {
     spinner1.start();
     await fs5.ensureDir(targetDir);
     spinner1.succeed("Project structure created");
-    if (answers.installationType === "full-panel") {
+    if (answers.installationType === "full-panel" && !answers.mergeWithExisting) {
       const spinner2 = logger.spinner("Copying base template files...");
       spinner2.start();
       await copyBaseTemplate(templatesDir, targetDir, variables);
       spinner2.succeed("Base template files copied");
+    } else if (answers.mergeWithExisting) {
+      logger.info("Skipping base template (preserving existing Next.js structure)");
     }
     const spinner3 = logger.spinner("Setting up configuration...");
     spinner3.start();
-    await copyConfigTemplate(templatesDir, targetDir, variables);
+    await copyConfigTemplate(templatesDir, targetDir, variables, answers.mergeWithExisting);
     spinner3.succeed("Configuration files created");
     if (answers.authentication) {
       const spinner4 = logger.spinner("Adding authentication system...");
       spinner4.start();
-      await copyAuthTemplate(templatesDir, targetDir, variables);
+      await copyAuthTemplate(templatesDir, targetDir, variables, answers.mergeWithExisting);
       spinner4.succeed("Authentication system added");
     }
     if (answers.installationType === "full-panel" && answers.demos) {
       const spinner5 = logger.spinner("Adding demo pages...");
       spinner5.start();
-      await copyDemoTemplate(templatesDir, targetDir, variables);
+      await copyDemoTemplate(templatesDir, targetDir, variables, answers.mergeWithExisting);
       await mergeMenuConfigs(targetDir, true);
       spinner5.succeed("Demo pages added");
     }
