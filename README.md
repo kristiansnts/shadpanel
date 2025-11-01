@@ -129,23 +129,14 @@ ShadPanel includes powerful database management commands powered by Prisma:
 # Initialize database configuration
 shadpanel db init
 
-# Generate Prisma schema from template
-shadpanel db generate-schema
-
 # Generate Prisma Client
 shadpanel db generate
 
-# Run migrations (uses existing schema.prisma)
+# Run migrations
 shadpanel db migrate [name]
-
-# Run migrations and regenerate from template first
-shadpanel db migrate [name] --regenerate
 
 # Push schema to database (no migration files)
 shadpanel db push
-
-# Push and regenerate from template first
-shadpanel db push --regenerate
 
 # Pull schema from existing database
 shadpanel db pull
@@ -162,15 +153,15 @@ shadpanel db reset
 
 ### Database Workflow
 
-**Option 1: Template-based workflow** (for reusable schemas)
-1. Edit `prisma/schema.prisma.template` with your models
-2. Run `shadpanel db generate-schema` to generate `schema.prisma`
-3. Run `shadpanel db migrate --regenerate` to apply changes
+After initializing your database with `shadpanel db init`, you can:
 
-**Option 2: Direct editing** (for one-time changes)
-1. Run `shadpanel db generate-schema` once to create `schema.prisma`
-2. Edit `prisma/schema.prisma` directly
-3. Run `shadpanel db migrate` to apply changes (without --regenerate)
+1. Define your models in `prisma/schema.prisma`
+2. Run `shadpanel db migrate [name]` to create and apply migrations
+3. Use `shadpanel db generate` to update the Prisma Client
+
+For development without migrations:
+1. Edit `prisma/schema.prisma` with your changes
+2. Run `shadpanel db push` to update the database schema directly
 
 ### Example Project Structure
 
