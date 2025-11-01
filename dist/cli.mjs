@@ -544,7 +544,7 @@ async function initGitRepository(projectDir) {
 // package.json
 var package_default = {
   name: "shadpanel",
-  version: "1.1.2",
+  version: "1.1.3",
   description: "ShadPanel CLI - Build admin panels with Next.js and shadcn/ui",
   main: "index.cjs",
   type: "module",
