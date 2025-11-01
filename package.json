@@ -1,6 +1,6 @@
 {
   "name": "shadpanel",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "ShadPanel CLI - Build admin panels with Next.js and shadcn/ui",
   "main": "index.cjs",
   "type": "module",
