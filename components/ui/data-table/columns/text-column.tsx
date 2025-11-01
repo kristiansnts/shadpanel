@@ -61,9 +61,9 @@ TextColumn.createColumnDef = (props: TextColumnProps) => {
         return <span>{String(nestedValue)}</span>
       }
 
-      // Handle string values with capitalize
+      // Handle string values
       if (typeof value === "string") {
-        return <span className="capitalize">{value}</span>
+        return <span>{value}</span>
       }
 
       return <span>{String(value)}</span>
