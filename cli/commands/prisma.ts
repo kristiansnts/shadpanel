@@ -119,7 +119,7 @@ generator client {
         logger.info("📝 Next steps:")
         logger.info("   1. Edit your .env file with actual database credentials")
         logger.info("   2. Edit prisma/schema.prisma.template to add your models")
-        logger.info("   3. Run 'shadpanel db generate-schema' to generate schema.prisma")
+        logger.info("   3. Update schema.prisma with your models")
         logger.info("   4. Edit prisma/schema.prisma to add/modify models")
         logger.info("   5. Run 'shadpanel db migrate' to create migrations")
         logger.info("   6. Run 'shadpanel db generate' to generate Prisma Client")
@@ -138,23 +138,7 @@ generator client {
       }
     })
 
-  // db:generate-schema - Generate Prisma schema from template
-  db.command("generate-schema")
-    .description("Generate prisma/schema.prisma from template using config")
-    .action(async () => {
-      try {
-        const spinner = logger.spinner("Generating Prisma schema from template...")
-        spinner.start()
 
-        await generatePrismaSchema()
-
-        spinner.succeed("Prisma schema generated successfully!")
-      } catch (error) {
-        logger.error("Failed to generate schema")
-        console.error(error)
-        process.exit(1)
-      }
-    })
 
   // db:generate - Generate schema + Prisma Client
   db.command("generate")
