@@ -1,15 +1,15 @@
 {
   "name": "shadpanel",
-  "version": "1.1.3",
+  "version": "1.2.3",
   "description": "ShadPanel CLI - Build admin panels with Next.js and shadcn/ui",
   "main": "index.cjs",
   "type": "module",
   "bin": {
-    "shadpanel": "./dist/cli.mjs"
+    "shadpanel": "./dist/cli.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:cli": "tsup cli/index.ts --format esm --dts --clean && mv dist/index.js dist/cli.mjs",
+  "build:cli": "tsup",
     "dev:cli": "tsx cli/index.ts",
     "prepublishOnly": "npm run build:cli"
   },

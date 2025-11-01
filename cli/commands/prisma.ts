@@ -84,22 +84,22 @@ generator client {
         await fs.writeFile(templatePath, defaultTemplate)
         spinner2.succeed("Prisma files created")
 
-        // Step 4: Install Prisma packages if requested
+        // Step 4: Install Prisma packages (pinned) if requested
         if (answers.installPrisma) {
           const spinner3 = logger.spinner(
-            `Installing Prisma with ${answers.packageManager}...`
+            `Installing Prisma 6.18.0 with ${answers.packageManager}...`
           )
           spinner3.start()
 
           try {
-            const pmCommands = {
-              npm: "npm install @prisma/client && npm install -D prisma",
-              pnpm: "pnpm add @prisma/client && pnpm add -D prisma",
-              yarn: "yarn add @prisma/client && yarn add -D prisma",
-              bun: "bun add @prisma/client && bun add -D prisma",
+            const pmCommands: Record<string, string> = {
+              npm: "npm install @prisma/client@6.18.0 && npm install -D prisma@6.18.0",
+              pnpm: "pnpm add @prisma/client@6.18.0 && pnpm add -D prisma@6.18.0",
+              yarn: "yarn add @prisma/client@6.18.0 && yarn add -D prisma@6.18.0",
+              bun: "bun add @prisma/client@6.18.0 && bun add -D prisma@6.18.0",
             }
 
-            execSync(pmCommands[answers.packageManager], {
+            execSync(pmCommands[answers.packageManager] || pmCommands.npm, {
               stdio: "inherit",
               cwd: projectDir,
             })
@@ -107,14 +107,39 @@ generator client {
           } catch (error) {
             spinner3.fail("Failed to install Prisma packages")
             logger.warn(
-              `You can install manually with: ${answers.packageManager} install @prisma/client prisma`
+              `You can install manually with: ${answers.packageManager} add -D prisma@6.18.0 && ${answers.packageManager} add @prisma/client@6.18.0`
             )
           }
         }
 
+        // Step 5: Generate Prisma Client if schema exists
+        try {
+          const schemaPath = path.join(projectDir, "prisma", "schema.prisma")
+          const generateCmd: Record<string, string> = {
+            npm: "npx prisma generate",
+            pnpm: "pnpm prisma generate",
+            yarn: "yarn prisma generate",
+            bun: "bunx prisma generate",
+          }
+          if (await fs.pathExists(schemaPath)) {
+            const spinnerGen = logger.spinner("Generating Prisma Client...")
+            spinnerGen.start()
+            execSync(generateCmd[answers.packageManager] || generateCmd.npm, {
+              stdio: "inherit",
+              cwd: projectDir,
+            })
+            spinnerGen.succeed("Prisma Client generated")
+          } else {
+            logger.warn("schema.prisma not found. Skipping 'prisma generate'.")
+            logger.info("Create prisma/schema.prisma or run 'shadpanel db generate' later.")
+          }
+        } catch (error) {
+          logger.warn("Failed to run 'prisma generate' automatically. You can run it manually later.")
+        }
+
         // Success message
-        logger.newline()
-        logger.success("✅ Database setup complete!")
+  logger.newline()
+  logger.success("✅ Database setup complete!")
         logger.newline()
         logger.info("📝 Next steps:")
         logger.info("   1. Edit your .env file with actual database credentials")
