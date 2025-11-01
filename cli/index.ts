@@ -1,6 +1,7 @@
 import { Command } from "commander"
 import { initCommand } from "./commands/init"
 import { prismaCommand } from "./commands/prisma"
+import { resourceCommand } from "./commands/resource"
 import packageJson from "../package.json"
 
 const program = new Command()
@@ -37,5 +38,7 @@ program
 
 // Register prisma/db commands (shadpanel db:init, etc.)
 program.addCommand(prismaCommand())
+// Register resource generator
+program.addCommand(resourceCommand())
 
 program.parse()
