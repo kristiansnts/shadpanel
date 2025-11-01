@@ -130,7 +130,14 @@ export function resourceCommand(): Command {
 
       const schemaPath = path.join(projectPath, "prisma", "schema.prisma")
       if (!(await fs.pathExists(schemaPath))) {
-        logger.error(`Prisma schema not found at ${schemaPath}`)
+        logger.error(`Prisma not initialized: schema not found at ${schemaPath}`)
+        logger.newline()
+        logger.info("You need to initialize Prisma and define your model before generating a resource.")
+        logger.info("Next steps:")
+        logger.info("  1) Run 'shadpanel db init'")
+        logger.info("  2) Define your model in prisma/schema.prisma")
+        logger.info("  3) (Optional) Run 'shadpanel db generate'")
+        logger.info("  4) Run 'shadpanel resource <model-name>' again")
         process.exit(2)
       }
 
@@ -151,9 +158,19 @@ export function resourceCommand(): Command {
       })
 
       if (!modelEntry) {
-        logger.error(`Model for '${name}' not found in schema.`)
-        logger.info("Available models:")
-        Object.keys(models).forEach((m) => logger.info(`  - ${m}`))
+        logger.error(`Model '${name}' not found in prisma/schema.prisma`)
+        const modelNames = Object.keys(models)
+        if (modelNames.length) {
+          logger.info("Available models:")
+          modelNames.forEach((m) => logger.info(`  - ${m}`))
+        } else {
+          logger.warn("No models found in your Prisma schema.")
+        }
+        logger.newline()
+        logger.info("Please define your model first in prisma/schema.prisma, e.g.:")
+        logger.info("  model Post {\n    id Int @id @default(autoincrement())\n    title String\n    published Boolean @default(false)\n  }")
+        logger.newline()
+        logger.info("Then run: 'shadpanel resource <model-name>'")
         process.exit(3)
       }
 
