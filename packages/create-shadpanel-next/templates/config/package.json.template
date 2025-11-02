@@ -6,7 +6,12 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "migrate:make": "shadpanel db migrate make",
+    "migrate:run": "shadpanel db migrate run",
+    "migrate:status": "shadpanel db migrate status",
+    "db:push": "shadpanel db push",
+    "db:generate": "shadpanel db generate"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",

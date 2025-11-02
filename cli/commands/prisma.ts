@@ -1,5 +1,6 @@
 import { Command } from "commander"
 import { execSync } from "child_process"
+import chalk from "chalk"
 import path from "path"
 import fs from "fs-extra"
 import { logger } from "../utils/logger"
@@ -191,49 +192,250 @@ generator client {
       }
     })
 
-  // db:migrate - Run migrations (without regenerating schema)
-  db.command("migrate")
-    .description("Run database migrations")
-    .argument("[name]", "Migration name")
-    .option("--regenerate", "Regenerate schema from template before migrating")
-    .action(async (name?: string, options?: { regenerate?: boolean }) => {
+  // db:migrate - Laravel-style workflows (make/run/status)
+  const migrate = new Command("migrate").description(
+    "Laravel-style Prisma migrations: make, run, status (no shadow DB)"
+  )
+
+  // Helper: sanitize migration name to snake_case
+  function sanitizeMigrationName(name: string) {
+    return name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+  }
+
+  // Helper: timestamp like YYYYMMDDHHMMSS
+  function timestamp() {
+    const d = new Date()
+    const pad = (n: number) => n.toString().padStart(2, "0")
+    return (
+      d.getFullYear().toString() +
+      pad(d.getMonth() + 1) +
+      pad(d.getDate()) +
+      pad(d.getHours()) +
+      pad(d.getMinutes()) +
+      pad(d.getSeconds())
+    )
+  }
+
+  // db migrate make <name>
+  migrate
+    .command("make")
+    .description("Create a new migration by diffing schema against the DB")
+    .argument("<name>", "Descriptive migration name, e.g. add_avatar_to_users")
+    .option("--empty", "Create an empty migration file for custom SQL")
+    .action(async (name: string, options: { empty?: boolean }) => {
+      const projectDir = process.cwd()
+      const prismaDir = path.join(projectDir, "prisma")
+      const schemaPath = path.join(prismaDir, "schema.prisma")
+      const migrationsDir = path.join(prismaDir, "migrations")
+
       try {
-        // Step 1: Optionally regenerate schema from template
-        if (options?.regenerate) {
-          const spinner1 = logger.spinner("Generating Prisma schema from template...")
-          spinner1.start()
-          await generatePrismaSchema()
-          spinner1.succeed("Prisma schema generated from template")
+        // Ensure schema exists
+        if (!fs.existsSync(schemaPath)) {
+          logger.error("prisma/schema.prisma not found. Create it first or run 'shadpanel db generate'.")
+          process.exit(1)
         }
 
-        // Step 2: Run migrations
-        const spinner2 = logger.spinner("Running database migrations...")
-        spinner2.start()
-        const migrateCmd = name
-          ? `npx prisma migrate dev --name ${name}`
-          : "npx prisma migrate dev"
-        execSync(migrateCmd, { stdio: "inherit" })
-        spinner2.succeed("Migrations applied")
+        const safeName = sanitizeMigrationName(name)
+        const folder = `${timestamp()}_${safeName}`
+        const destDir = path.join(migrationsDir, folder)
+        await fs.ensureDir(destDir)
 
-        logger.newline()
-        logger.success("Database migration complete!")
-      } catch (error: any) {
-        logger.newline()
-        logger.error("Failed to run migrations")
-        logger.newline()
-        logger.warn("Common issues:")
-        logger.info("  • Check your database credentials in .env")
-        logger.info("  • Make sure the database exists and is running")
-        logger.info("  • Verify your user has the correct permissions")
-        logger.info("  • For MySQL: GRANT ALL PRIVILEGES ON database_name.* TO 'user'@'localhost';")
-        logger.newline()
+        const migrationFile = path.join(destDir, "migration.sql")
 
-        if (error.message || error.stderr) {
-          console.error(error)
+        if (options.empty) {
+          const header = `-- Empty migration\n-- Name: ${safeName}\n-- Created: ${new Date().toISOString()}\n\n`
+          await fs.writeFile(migrationFile, header)
+        } else {
+          // Generate SQL diff between DB (from datasource) and schema (datamodel)
+          const spinner = logger.spinner("Generating migration from schema changes...")
+          spinner.start()
+          try {
+            const cmd = [
+              "npx prisma migrate diff",
+              "--from-schema-datasource prisma/schema.prisma",
+              "--to-schema-datamodel prisma/schema.prisma",
+              "--script",
+            ].join(" ")
+
+            const sql = execSync(cmd, { cwd: projectDir, encoding: "utf-8" })
+            const trimmed = (sql || "").trim()
+
+            if (!trimmed || /No\s+changes?/i.test(trimmed)) {
+              spinner.stop()
+              logger.warn("No schema changes detected. Migration not created.")
+              // Clean up created dir if empty
+              const files = await fs.readdir(destDir)
+              if (files.length === 0) await fs.remove(destDir)
+              process.exit(0)
+            }
+
+            await fs.writeFile(migrationFile, trimmed + (trimmed.endsWith("\n") ? "" : "\n"))
+            spinner.succeed(
+              `Migration created: ${folder}\n  Location: prisma/migrations/${folder}/migration.sql`
+            )
+          } catch (err: any) {
+            spinner.fail("Failed to generate migration diff")
+            throw err
+          }
         }
+
+        logger.newline()
+        logger.info("Next steps:")
+        logger.info("  1. Review the migration file")
+        logger.info("  2. Run: shadpanel db migrate run")
+      } catch (error) {
+        logger.error("Failed to create migration")
+        console.error(error)
         process.exit(1)
       }
     })
+
+  // db migrate run
+  migrate
+    .command("run")
+    .description("Apply all pending migrations and regenerate Prisma Client")
+    .action(async () => {
+      try {
+        const spinner1 = logger.spinner("Applying migrations...")
+        spinner1.start()
+        execSync("npx prisma migrate deploy", { stdio: "inherit" })
+        spinner1.succeed("Migrations applied successfully")
+
+        const spinner2 = logger.spinner("Generating Prisma Client...")
+        spinner2.start()
+        execSync("npx prisma generate", { stdio: "inherit" })
+        spinner2.succeed("Done!")
+      } catch (error) {
+        logger.error("Failed to apply migrations")
+        console.error(error)
+        process.exit(1)
+      }
+    })
+
+  // db migrate status
+  migrate
+    .command("status")
+    .description("Show migration status and pending migrations")
+    .action(() => {
+      logger.info("Checking migration status...\n")
+
+      // Helper to parse prisma status text output
+      function parseStatus(text: string) {
+        const fullText = text
+        const lines = text.split(/\r?\n/)
+        let lastCommon: string | null = null
+        let inPending = false
+        let inDbOnly = false
+        let pending: string[] = []
+        let dbOnly: string[] = []
+        let totalMigrations = 0
+
+        for (const raw of lines) {
+          const line = raw.trim()
+          if (!line) continue
+
+          // Extract total migrations count
+          const totalMatch = line.match(/^(\d+)\s+migrations?\s+found/i)
+          if (totalMatch) {
+            totalMigrations = parseInt(totalMatch[1], 10)
+          }
+
+          // Check for section headers
+          if (line.startsWith("The last common migration is:")) {
+            lastCommon = line.replace("The last common migration is:", "").trim()
+            inPending = false
+            inDbOnly = false
+            continue
+          }
+          if (line.match(/migration.*have not yet been applied/i)) {
+            inPending = true
+            inDbOnly = false
+            continue
+          }
+          if (line.match(/migrations from the database are not found locally/i)) {
+            inDbOnly = true
+            inPending = false
+            continue
+          }
+
+          // Capture migration names (timestamp_name format)
+          if (/^\d{14}_/.test(line)) {
+            if (inPending) {
+              pending.push(line)
+            } else if (inDbOnly) {
+              dbOnly.push(line)
+            }
+          }
+        }
+
+        return { lastCommon, pending, dbOnly, totalMigrations, text: fullText }
+      }
+
+      try {
+        // Capture output even if exit code is non-zero
+        let output = ""
+        try {
+          output = execSync("npx prisma migrate status", { encoding: "utf-8", stdio: "pipe" })
+        } catch (err: any) {
+          // Prisma exits with code 1 when there are pending/drift migrations
+          // Combine both stdout and stderr as Prisma may write to both
+          const stdout = err.stdout?.toString() || ""
+          const stderr = err.stderr?.toString() || ""
+          output = stdout + stderr
+        }
+
+        if (!output) {
+          logger.warn("No output from Prisma. Ensure Prisma is installed and schema is configured.")
+          return
+        }
+
+        const { lastCommon, pending, dbOnly, totalMigrations, text } = parseStatus(output)
+        const pendingCount = pending.length
+        const dbOnlyCount = dbOnly.length
+
+        // Check if database is in sync
+        const hasLocalHistory = text.includes("Your local migration history") && text.includes("are different")
+        const isUpToDate = (text.includes("up to date") || text.includes("up-to-date")) && !hasLocalHistory
+        
+        // Clean summary output
+        if (isUpToDate) {
+          console.log(chalk.green(`✔ Database is up to date! (${totalMigrations} migration${totalMigrations === 1 ? '' : 's'} applied)`))
+        } else {
+          console.log(chalk.green(`✔ Already on database: ${dbOnlyCount}`))
+          console.log(chalk.red(`✖ Pending: ${pendingCount}`))
+          
+          if (pendingCount > 0) {
+            console.log(chalk.blue("\nPending migrations:"))
+            pending.forEach((migration) => {
+              console.log(`  ${chalk.yellow("→")} ${migration}`)
+            })
+          }
+        }
+      } catch (error) {
+        // Do not hard fail; provide guidance
+        logger.warn("Unable to compute migration summary. See Prisma output above.")
+      }
+    })
+
+  // Default: running `shadpanel db migrate` will act like `run`
+  migrate.action(() => {
+    try {
+      logger.info("No subcommand provided. Running pending migrations...\n")
+      execSync("npx prisma migrate deploy", { stdio: "inherit" })
+      logger.newline()
+      logger.success("Migrations applied")
+    } catch (error) {
+      logger.error("Failed to apply migrations")
+      console.error(error)
+      process.exit(1)
+    }
+  })
+
+  db.addCommand(migrate)
 
   // db:push - Push schema to database (without regenerating)
   db.command("push")
