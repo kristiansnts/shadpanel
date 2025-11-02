@@ -132,10 +132,10 @@ shadpanel db init
 # Generate Prisma Client
 shadpanel db generate
 
-# Run migrations
-shadpanel db migrate [name]
-shadpanel db migrate --name <migration-name>
-shadpanel db migrate -n <migration-name>
+# Migrations (Laravel-style)
+shadpanel db migrate make <name>    # Create a new migration from schema diff
+shadpanel db migrate run            # Apply pending migrations
+shadpanel db migrate status         # Show migration status
 
 # Push schema to database (no migration files)
 shadpanel db push
@@ -158,8 +158,9 @@ shadpanel db reset
 After initializing your database with `shadpanel db init`, you can:
 
 1. Define your models in `prisma/schema.prisma`
-2. Run `shadpanel db migrate --name <migration-name>` (or `-n`) to create and apply migrations
-3. Use `shadpanel db generate` to update the Prisma Client
+2. Create a migration from schema changes: `shadpanel db migrate make <name>`
+3. Apply pending migrations: `shadpanel db migrate run`
+4. Use `shadpanel db generate` to update the Prisma Client
 
 For development without migrations:
 1. Edit `prisma/schema.prisma` with your changes
