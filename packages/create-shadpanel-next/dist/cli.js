@@ -273,6 +273,7 @@ var logger = {
     }
     console.log();
     console.log(chalk.bold("\u{1F4DA} Documentation:"), chalk.cyan("https://github.com/kristiansnts/shadpanel"));
+    console.log(chalk.bold("\u2B50 Enjoying ShadPanel?"), chalk.cyan("Give it a star:"), chalk.underline.cyan("https://github.com/kristiansnts/shadpanel"));
     console.log();
   },
   // Print a blank line
