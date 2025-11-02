@@ -103,6 +103,8 @@ export const logger = {
 
     console.log()
     console.log(chalk.bold("📚 Documentation:"), chalk.cyan("https://github.com/kristiansnts/shadpanel"))
+    // Friendly nudge to star the repo
+    console.log(chalk.bold("⭐ Enjoying ShadPanel?"), chalk.cyan("Give it a star:"), chalk.underline.cyan("https://github.com/kristiansnts/shadpanel"))
     console.log()
   },
 
