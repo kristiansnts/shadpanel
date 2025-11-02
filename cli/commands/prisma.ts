@@ -195,9 +195,13 @@ generator client {
   db.command("migrate")
     .description("Run database migrations")
     .argument("[name]", "Migration name")
+    .option("-n, --name <name>", "Name the migration (e.g. added_job_title)")
     .option("--regenerate", "Regenerate schema from template before migrating")
-    .action(async (name?: string, options?: { regenerate?: boolean }) => {
+    .action(async (nameArg?: string, options?: { regenerate?: boolean; name?: string }) => {
       try {
+        // Priority: --name flag > positional argument
+        const migrationName = options?.name || nameArg
+
         // Step 1: Optionally regenerate schema from template
         if (options?.regenerate) {
           const spinner1 = logger.spinner("Generating Prisma schema from template...")
@@ -209,8 +213,8 @@ generator client {
         // Step 2: Run migrations
         const spinner2 = logger.spinner("Running database migrations...")
         spinner2.start()
-        const migrateCmd = name
-          ? `npx prisma migrate dev --name ${name}`
+        const migrateCmd = migrationName
+          ? `npx prisma migrate dev --name ${migrationName}`
           : "npx prisma migrate dev"
         execSync(migrateCmd, { stdio: "inherit" })
         spinner2.succeed("Migrations applied")

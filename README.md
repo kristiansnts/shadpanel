@@ -134,6 +134,8 @@ shadpanel db generate
 
 # Run migrations
 shadpanel db migrate [name]
+shadpanel db migrate --name <migration-name>
+shadpanel db migrate -n <migration-name>
 
 # Push schema to database (no migration files)
 shadpanel db push
@@ -156,7 +158,7 @@ shadpanel db reset
 After initializing your database with `shadpanel db init`, you can:
 
 1. Define your models in `prisma/schema.prisma`
-2. Run `shadpanel db migrate [name]` to create and apply migrations
+2. Run `shadpanel db migrate --name <migration-name>` (or `-n`) to create and apply migrations
 3. Use `shadpanel db generate` to update the Prisma Client
 
 For development without migrations:
