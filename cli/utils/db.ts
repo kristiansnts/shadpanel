@@ -1,5 +1,8 @@
 import fs from "fs-extra"
 import path from "path"
+import { emitSchema, SCHEMA_RELATIVE_PATH } from "../generate/emit-schema"
+import { writeFile, type WriteOutcome } from "../generate/write-policy"
+import { getCliSchemaTemplate } from "../generate/cli-templates"
 
 // Load environment variables from .env file if it exists
 function loadEnv() {
@@ -150,52 +153,32 @@ function buildMongoDBUrl(credentials: DatabaseCredentials): string {
 }
 
 /**
- * Generate Prisma schema from template
+ * @deprecated 1.4.0 — do not interpolate DATABASE_URL into schema.prisma.
+ * Use writePrismaSchema() which emits Prisma 6 with env("DATABASE_URL").
  */
 export async function generatePrismaSchema(projectDir?: string): Promise<void> {
   const baseDir = projectDir || process.cwd()
-  const templatePath = path.join(baseDir, 'prisma', 'schema.prisma.template')
-  const outputPath = path.join(baseDir, 'prisma', 'schema.prisma')
-
-  // Get database configuration
-  const driver = getDriver()
-  const url = getUrl()
-
-  console.log(`📊 Database Driver: ${driver}`)
-  console.log(`🔗 Database URL: ${url.substring(0, 20)}...`)
-
-  // Check if template exists
-  if (!(await fs.pathExists(templatePath))) {
-    console.warn(`⚠️  Template file not found: ${templatePath}`)
-    console.log('Creating default template...')
-
-    // Create a basic template
-    const defaultTemplate = `datasource db {
-  provider = "{{DATABASE_DRIVER}}"
-  url      = "{{DATABASE_URL}}"
+  await writePrismaSchema(baseDir, getDriver(), { force: false })
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
+/**
+ * Write prisma/schema.prisma from the CLI Prisma 6 emitter.
+ * Never reads or writes a user-project schema.prisma.template.
+ * Never interpolates credentials into the schema.
+ */
+export async function writePrismaSchema(
+  projectDir: string,
+  driver: DatabaseDriver,
+  options: { force?: boolean; dryRun?: boolean } = {}
+): Promise<WriteOutcome> {
+  const template = await getCliSchemaTemplate()
+  const content = emitSchema({ driver, template })
+  const outputPath = path.join(projectDir, SCHEMA_RELATIVE_PATH)
 
-// Add your models here
-`
-    await fs.ensureDir(path.dirname(templatePath))
-    await fs.writeFile(templatePath, defaultTemplate)
-  }
-
-  // Read the template
-  let schemaContent = await fs.readFile(templatePath, 'utf-8')
-
-  // Replace placeholders
-  schemaContent = schemaContent
-    .replace(/\{\{DATABASE_DRIVER\}\}/g, driver)
-    .replace(/\{\{DATABASE_URL\}\}/g, url)
-
-  // Write the generated schema
-  await fs.ensureDir(path.dirname(outputPath))
-  await fs.writeFile(outputPath, schemaContent)
-
-  console.log(`✅ Generated: ${outputPath}`)
+  return writeFile({
+    path: outputPath,
+    content,
+    force: options.force,
+    dryRun: options.dryRun,
+  })
 }

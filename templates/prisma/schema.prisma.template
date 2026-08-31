@@ -1,0 +1,16 @@
+datasource db {
+  provider = "{{DATABASE_DRIVER}}"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Add your models here
+// Example:
+// model Example {
+//   id        Int      @id @default(autoincrement())
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+// }

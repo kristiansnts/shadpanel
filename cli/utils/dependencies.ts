@@ -1,6 +1,7 @@
 import { execSync } from "child_process"
 import fs from "fs-extra"
 import path from "path"
+import { ensureTsxDevDependency, patchPrismaSeedConfig } from "../generate/emit-seed"
 
 export type PackageManager = "npm" | "pnpm" | "yarn" | "bun"
 
@@ -141,6 +142,27 @@ export async function updatePackageJson(
   }
 
   await fs.writeJson(packageJsonPath, packageJson, { spaces: 2 })
+}
+
+/**
+ * Add package.json `prisma.seed` and a `tsx` devDependency when missing.
+ * Does not clobber an existing prisma.seed script.
+ */
+export async function ensurePrismaSeed(projectDir: string): Promise<boolean> {
+  const packageJsonPath = path.join(projectDir, "package.json")
+  if (!(await fs.pathExists(packageJsonPath))) {
+    return false
+  }
+
+  const packageJson = await fs.readJson(packageJsonPath)
+  const seeded = patchPrismaSeedConfig(packageJson)
+  const withTsx = ensureTsxDevDependency(seeded.pkg)
+  if (!seeded.changed && !withTsx.changed) {
+    return false
+  }
+
+  await fs.writeJson(packageJsonPath, withTsx.pkg, { spaces: 2 })
+  return true
 }
 
 /**
