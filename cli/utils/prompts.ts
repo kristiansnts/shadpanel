@@ -2,6 +2,7 @@ import prompts from "prompts"
 import path from "path"
 import fs from "fs-extra"
 import type { CliOptions } from "../commands/init"
+import { shouldSkipDemos } from "./skip-demos"
 
 export type InstallationType = "full-panel" | "auth-components" | "components-only"
 export type PackageManager = "npm" | "pnpm" | "yarn" | "bun"
@@ -66,8 +67,8 @@ export async function promptInitQuestions(
       packageManager,
       authentication: cliOptions.noAuth ? false : (installationType !== "components-only"),
       authProviders: authProviders.length > 0 ? authProviders : ["credentials"],
-      demos: cliOptions.noDemos ? false : (installationType === "full-panel"),
-      demoTypes: cliOptions.noDemos ? [] : ["form", "table", "notification"],
+      demos: shouldSkipDemos(cliOptions) ? false : (installationType === "full-panel"),
+      demoTypes: shouldSkipDemos(cliOptions) ? [] : ["form", "table", "notification"],
       initGit: cliOptions.disableGit ? false : true,
       skipInstall: cliOptions.skipInstall || false,
       mergeWithExisting: directoryExists, // Auto-merge if --yes flag and directory exists
@@ -164,8 +165,8 @@ export async function promptInitQuestions(
       hint: "Space to select. Return to submit",
       instructions: false,
     },
-    // Demos (skip if noDemos flag)
-    cliOptions.noDemos ? null : {
+    // Demos (skip prompt when --no-demos / --skip-demos / Commander demos:false)
+    shouldSkipDemos(cliOptions) ? null : {
       type: (prev: any, answers: any) => {
         const instType = answers.installationType || installationType
         return instType === "full-panel" ? "confirm" : null
@@ -174,7 +175,7 @@ export async function promptInitQuestions(
       message: "Do you want to include demo pages? (recommended for learning)",
       initial: true,
     },
-    {
+    shouldSkipDemos(cliOptions) ? null : {
       type: (prev: boolean, answers: any) => {
         const instType = answers.installationType || installationType
         return prev && instType === "full-panel" ? "multiselect" : null
@@ -218,8 +219,8 @@ export async function promptInitQuestions(
       packageManager: promptAnswers.packageManager || packageManager,
       authentication: false,
       authProviders: promptAnswers.authProviders || authProviders,
-      demos: promptAnswers.demos !== undefined ? promptAnswers.demos : (cliOptions.noDemos ? false : installationType === "full-panel"),
-      demoTypes: promptAnswers.demoTypes || (cliOptions.noDemos ? [] : ["form", "table", "notification"]),
+      demos: promptAnswers.demos !== undefined ? promptAnswers.demos : (shouldSkipDemos(cliOptions) ? false : installationType === "full-panel"),
+      demoTypes: promptAnswers.demoTypes || (shouldSkipDemos(cliOptions) ? [] : ["form", "table", "notification"]),
       initGit: promptAnswers.initGit !== undefined ? promptAnswers.initGit : !cliOptions.disableGit,
       skipInstall: cliOptions.skipInstall || false,
       mergeWithExisting: promptAnswers.mergeWithExisting !== undefined ? promptAnswers.mergeWithExisting : false,

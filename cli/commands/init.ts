@@ -24,6 +24,7 @@ import {
   type PackageManager,
 } from "../utils/dependencies"
 import { initGitRepository, isGitAvailable } from "../utils/git"
+import { shouldCopyDemoPages } from "../utils/skip-demos"
 import packageJson from "../../package.json"
 
 // ES module equivalent of __dirname
@@ -46,7 +47,10 @@ export interface CliOptions {
   google?: boolean
   github?: boolean
   credentials?: boolean
+  /** Commander `--no-demos` sets this to `false`. */
+  demos?: boolean
   noDemos?: boolean
+  skipDemos?: boolean
 }
 
 export async function initCommand(projectName?: string, options: CliOptions = {}): Promise<void> {
@@ -144,13 +148,15 @@ export async function initCommand(projectName?: string, options: CliOptions = {}
       spinner4.succeed("Authentication system added")
     }
 
-    // Step 5: Copy demo template if needed (only for full-panel, preserve existing if merging)
-    if (answers.installationType === "full-panel" && answers.demos) {
+    // Step 5: Copy demo template if needed (only for full-panel, honor skip-demo flags)
+    if (shouldCopyDemoPages(answers.installationType, answers.demos)) {
       const spinner5 = logger.spinner("Adding demo pages...")
       spinner5.start()
       await copyDemoTemplate(templatesDir, targetDir, variables, answers.mergeWithExisting)
       await mergeMenuConfigs(targetDir, true)
       spinner5.succeed("Demo pages added")
+    } else if (answers.installationType === "full-panel") {
+      logger.info("Skipping demo pages")
     }
 
     // Step 5.5: Copy UI components, lib, and hooks from package

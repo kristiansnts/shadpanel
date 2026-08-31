@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-08-31
+
+Post-1.4.0 QA fixes. No stack change, no Resource 2.0, no Better Auth.
+
+### Fixed
+
+- `shadpanel init --no-demos` (and `--skip-demos`) skips demo pages. Commander sets `demos: false` for `--no-demos`; the generator previously looked only at `noDemos` and still logged `[ok] Demo pages added`.
+- `prisma generate` (and other Prisma CLI shells) use `node_modules/.bin/prisma` when present, otherwise `npx --yes prisma@6.18.0`. Unpinned `npx prisma` no longer prompts for Prisma 8.
+
 ## [1.4.0] - 2026-08-31
 
 Hygiene + docs release on the current templates: **Next.js 15**, **React 19**, **NextAuth.js v4**, **Prisma 6.18**. Not a stack upgrade and not Resource 2.0.
