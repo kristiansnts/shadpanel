@@ -1,7 +1,7 @@
 {
   "name": "create-shadpanel-next",
-  "version": "0.1.0",
-  "description": "Create a new Next.js admin panel with ShadPanel - Use via npx create-shadpanel-next@latest my-app",
+  "version": "0.1.1",
+  "description": "Deprecated — use npx shadpanel@latest init <name> instead",
   "type": "module",
   "bin": {
     "create-shadpanel-next": "./dist/cli.js"

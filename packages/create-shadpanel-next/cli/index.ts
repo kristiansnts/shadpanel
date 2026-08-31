@@ -26,7 +26,10 @@ program
   .option("--credentials", "Include email/password authentication (default)")
   .option("--no-demos", "Skip demo pages")
   .action(async (projectName?: string, options?: any) => {
-    // When used as `npx create-shadpanel-next my-app`, projectName is the first arg
+    console.warn(
+      "⚠ create-shadpanel-next is deprecated. Use: npx shadpanel@latest init " +
+        (projectName || "<name>")
+    )
     await initCommand(projectName, options)
   })
 
@@ -52,6 +55,10 @@ program
   .option("--credentials", "Include email/password authentication (default)")
   .option("--no-demos", "Skip demo pages")
   .action(async (projectName?: string, options?: any) => {
+    console.warn(
+      "⚠ create-shadpanel-next is deprecated. Use: npx shadpanel@latest init " +
+        (projectName || "<name>")
+    )
     await initCommand(projectName, options)
   })
 

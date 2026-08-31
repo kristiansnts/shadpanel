@@ -1,58 +1,59 @@
 # ShadPanel
 
-> Next.js Admin Panel CLI - Create complete admin panels instantly
+> Generate admin CRUD from a Prisma model — `shadpanel resource`
 
-**ShadPanel** is a CLI tool that scaffolds complete Next.js admin panels with authentication, form builders, data tables, and 50+ UI components based on [shadcn/ui](https://ui.shadcn.com).
+**ShadPanel** is a CLI that scaffolds Next.js admin panels with authentication, form builders, data tables, and 50+ UI components based on [shadcn/ui](https://ui.shadcn.com). The hero path is **resource generation**: define a model, run one command, get list/create/edit pages.
+
+```bash
+# After db init + a Post model in prisma/schema.prisma
+shadpanel resource Post
+```
+
+That writes list, create, and edit screens under `/admin/dashboard/posts`, plus server actions that import `@/lib/prisma`.
 
 ## Quick Start
 
-Create a new admin panel in seconds:
-
 ```bash
-# Using the main CLI (recommended)
+# 1. Scaffold a Next.js 15 + NextAuth v4 app
+npx shadpanel@latest init my-app
+# or, if installed globally:
 shadpanel init my-app
 
-# Or directly with create-shadpanel-next
-npx create-shadpanel-next my-app
-```
-
-### Database Setup (Optional)
-
-After creating your project, you can easily set up Prisma for database management:
-
-```bash
 cd my-app
+
+# 2. Prisma 6 (writes prisma/schema.prisma, lib/prisma.ts, prisma/seed.ts)
 shadpanel db init
+
+# 3. Add models in prisma/schema.prisma, then:
+shadpanel db migrate make add_posts
+shadpanel db migrate run
+
+# 4. Generate the admin resource
+shadpanel resource Post
 ```
 
-This will:
-- ✅ Prompt you to choose your database (MySQL, PostgreSQL, SQLite, or MongoDB)
-- ✅ Create `.env` file with database configuration
-- ✅ Set up Prisma schema template
-- ✅ Install Prisma packages
-- ✅ Ready to define your models and run migrations
+`npx create-shadpanel-next` is **deprecated**. Use `npx shadpanel@latest init <name>` (or global `shadpanel init`).
 
 This will:
-- ✅ Set up complete Next.js 15 project structure
-- ✅ Configure Tailwind CSS v4 and TypeScript
-- ✅ Add NextAuth.js authentication with OAuth providers
-- ✅ Include Form Builder with validation
-- ✅ Add Data Table with sorting, filtering, and pagination
-- ✅ Set up responsive sidebar navigation
-- ✅ Include 50+ pre-configured UI components
-- ✅ Add demo pages and examples
+
+- ✅ Scaffold a Next.js 15 + React 19 + NextAuth.js v4 admin app
+- ✅ Write Prisma 6 `schema.prisma` with `url = env("DATABASE_URL")` (no user-project `.template`)
+- ✅ Emit `lib/prisma.ts` (PrismaClient singleton) and a `prisma/seed.ts` stub
+- ✅ Generate list/create/edit pages from scalar fields (String, Int, Boolean, DateTime, enum)
+- ✅ Skip existing files on re-run (use `--force` to overwrite)
+
+Relation object fields are skipped in 1.4.0. Foreign-key scalars (`authorId`, `roleId`) stay number/string inputs.
 
 ## Features
 
 - 🎨 **50+ UI Components** - Complete shadcn/ui component library
 - 📝 **Form Builder** - Filament-inspired declarative forms with validation
 - 📊 **Data Table** - Powerful tables with sorting, searching, and pagination
-- 🔐 **Authentication** - NextAuth.js with Google, GitHub, and credentials
+- 🔐 **Authentication** - NextAuth.js v4 with Google, GitHub, and credentials
+- 🗃️ **Resource generator** - `shadpanel resource` from a Prisma model
 - 🎯 **TypeScript First** - Full type safety and IntelliSense support
 - 🌙 **Dark Mode Ready** - Built-in theme support
 - 📱 **Responsive** - Mobile-friendly sidebar and layouts
-- ⚡ **Zero Config** - Works out of the box
-- 🏷️ **Consistent Naming** - All form and table components use prefixed naming to avoid conflicts
 
 ## Usage
 
@@ -63,7 +64,7 @@ This will:
 npm install -g shadpanel
 
 # Or use with npx (no installation needed)
-npx shadpanel init my-app
+npx shadpanel@latest init my-app
 ```
 
 ### Create New Project
@@ -82,57 +83,57 @@ shadpanel --version
 shadpanel --help
 ```
 
+### Generate a resource
+
+```bash
+# From a model named Post in prisma/schema.prisma
+shadpanel resource Post
+
+# Re-run is skip-if-exists (exit 0). Overwrite with:
+shadpanel resource Post --force
+
+# Preview without writing
+shadpanel resource Post --dry-run
+```
+
+Create/edit widgets:
+
+| Prisma type | Widget |
+|---|---|
+| `String` | `FormInput` (`email` / `password` by field name) |
+| `Int` / `Float` / `Decimal` | `FormInput` numeric |
+| `Boolean` | `FormCheckbox` |
+| `DateTime` | `FormDateTimePicker` |
+| enum | `FormSelect` |
+| relation objects | skipped |
+| FK scalars (`authorId`, `roleId`) | scalar input, not `FormSelect` |
+
 ### Merging with Existing Projects
 
 ShadPanel can merge into existing Next.js projects, preserving your existing files:
 
 ```bash
-# Navigate to your existing Next.js project
 cd my-existing-nextjs-app
-
-# Initialize ShadPanel (will prompt for merge confirmation)
 shadpanel init .
-
-# Or specify a directory name
-shadpanel init my-app
 ```
 
 When merging:
+
 - ✅ **Existing files are preserved** - Your layout, pages, and components won't be overwritten
 - ✅ **Only adds new files** - Only ShadPanel components and utilities are added
 - ✅ **Safe merge** - You'll be prompted before any changes are made
 - ✅ **Perfect for components-only** - Use `--components-only` to add just the UI library
 
-Example workflow:
-```bash
-# Already have a Next.js app
-cd my-app
-
-# Add ShadPanel components only (keeps your existing structure)
-shadpanel init . --components-only
-
-# This will skip your existing:
-# - app/page.tsx (your home page)
-# - app/layout.tsx (your root layout)
-# - package.json (your dependencies)
-# And only add new:
-# - components/ui/* (ShadPanel components)
-# - lib/utils.ts (utility functions)
-# - hooks/* (React hooks)
-```
-
 ### Database Commands
-
-ShadPanel includes powerful database management commands powered by Prisma:
 
 ```bash
 # Initialize database configuration
 shadpanel db init
 
-# Generate Prisma Client
+# Generate Prisma Client (does not rewrite schema.prisma)
 shadpanel db generate
 
-# Migrations (Laravel-style)
+# Migrations
 shadpanel db migrate make <name>    # Create a new migration from schema diff
 shadpanel db migrate run            # Apply pending migrations
 shadpanel db migrate status         # Show migration status
@@ -146,7 +147,7 @@ shadpanel db pull
 # Open Prisma Studio
 shadpanel db studio
 
-# Seed database
+# Seed database (edit prisma/seed.ts)
 shadpanel db seed
 
 # Reset database
@@ -155,76 +156,51 @@ shadpanel db reset
 
 ### Database Workflow
 
-After initializing your database with `shadpanel db init`, you can:
+After `shadpanel db init`:
 
-1. Define your models in `prisma/schema.prisma`
-2. Create a migration from schema changes: `shadpanel db migrate make <name>`
-3. Apply pending migrations: `shadpanel db migrate run`
-4. Use `shadpanel db generate` to update the Prisma Client
+1. Edit `.env` with real credentials
+2. Define models in `prisma/schema.prisma`
+3. `shadpanel db migrate make <name>`
+4. `shadpanel db migrate run`
+5. `shadpanel resource <Model>`
 
 For development without migrations:
-1. Edit `prisma/schema.prisma` with your changes
-2. Run `shadpanel db push` to update the database schema directly
+
+1. Edit `prisma/schema.prisma`
+2. Run `shadpanel db push`
 
 ### Example Project Structure
-
-After running the CLI, you'll get:
 
 ```
 my-app/
 ├── app/
-│   ├── layout.tsx              # Root layout with providers
-│   ├── page.tsx                # Landing page
-│   ├── globals.css             # Global styles with Tailwind
+│   ├── layout.tsx
+│   ├── page.tsx
 │   ├── admin/
-│   │   ├── layout.tsx          # Admin layout with auth
-│   │   ├── login/page.tsx      # Login page
-│   │   ├── signup/page.tsx     # Signup page
+│   │   ├── layout.tsx
+│   │   ├── login/page.tsx
 │   │   └── dashboard/
-│   │       ├── layout.tsx      # Dashboard with sidebar
-│   │       ├── page.tsx        # Dashboard home
-│   │       └── users/page.tsx  # Users management
-│   └── api/
-│       └── auth/[...nextauth]/ # NextAuth.js API routes
-│           └── route.ts
-├── components/
-│   ├── ui/                     # 50+ shadcn/ui components
-│   │   ├── button.tsx
-│   │   ├── card.tsx
-│   │   ├── input.tsx
-│   │   ├── sidebar.tsx
-│   │   ├── form-builder/       # Form builder components
-│   │   └── data-table/         # Data table components
-│   ├── app-sidebar.tsx         # Sidebar navigation
-│   ├── providers.tsx           # App providers wrapper
-│   ├── login-form.tsx          # Login form component
-│   ├── signup-form.tsx         # Signup form component
-│   └── auth-provider-config.tsx
-├── contexts/
-│   ├── panel-context.tsx       # Panel state management
-│   └── auth-providers-context.tsx
-├── hooks/
-│   ├── use-mobile.ts           # Responsive hooks
-│   └── use-auth-providers.ts   # Auth state management
+│   │       ├── page.tsx
+│   │       └── posts/              # from: shadpanel resource Post
+│   │           ├── page.tsx
+│   │           ├── create/page.tsx
+│   │           └── edit/[id]/page.tsx
+│   └── api/auth/[...nextauth]/route.ts
+├── components/ui/
 ├── lib/
-│   └── utils.ts                # Utility functions
-├── types/
-│   └── next-auth.d.ts          # TypeScript definitions
-├── config/
-│   └── menu.ts                 # Sidebar menu config
+│   ├── utils.ts
+│   └── prisma.ts                   # PrismaClient singleton (db init / resource)
+├── prisma/
+│   ├── schema.prisma               # Prisma 6, url = env("DATABASE_URL")
+│   └── seed.ts                     # stub — add your own data
+├── config/menu.ts
 ├── package.json
-├── tsconfig.json
-├── next.config.ts
-├── postcss.config.mjs
-├── .gitignore
-└── README.md
+└── tsconfig.json
 ```
 
 ## What You Get
 
 ### Form Builder Example
-
-Build forms declaratively with automatic validation and styling:
 
 ```tsx
 'use client'
@@ -260,8 +236,6 @@ export default function UserForm() {
 
 ### Data Table Example
 
-Create powerful data tables with sorting, filtering, and pagination:
-
 ```tsx
 'use client'
 
@@ -282,8 +256,6 @@ export default function UsersTable({ users }) {
   )
 }
 ```
-
-**Features**: Built-in sorting, global search, column filtering, pagination, row selection, and bulk actions.
 
 ### Authentication Example
 
@@ -331,64 +303,40 @@ export default function AuthButton() {
 
 ## Development
 
-After installation, run:
-
 ```bash
 cd my-app
-
 npm run dev
-# or
-pnpm dev
-# or
-yarn dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to see your admin panel.
 
 ## Component Naming Conventions
 
-ShadPanel uses **prefixed naming** for all form and table components to avoid naming conflicts with native HTML elements and other UI libraries:
+ShadPanel uses **prefixed naming** for form and table components:
 
 ### Form Components
-All form-related components are prefixed with `Form`:
-- ✅ `FormInput` - Text input fields
-- ✅ `FormSelect` - Dropdown selects
-- ✅ `FormTextarea` - Multi-line text areas
-- ✅ `FormCheckbox` - Checkboxes
-- ✅ `FormToggle` - Toggle switches
-- ✅ `FormSection` - Form sections with titles
-- ✅ `FormGrid` - Responsive grid layouts
+- ✅ `FormInput`, `FormSelect`, `FormTextarea`, `FormCheckbox`, `FormToggle`
+- ✅ `FormSection`, `FormGrid`
 
 ### Table Components
-All data table components are prefixed with `Table`:
-- ✅ `Table` - Main data table component (replaces `DataTable`)
-- ✅ `TableTextColumn` - Text columns with sorting/filtering
-- ✅ `TableSelectColumn` - Checkbox selection column
-- ✅ `TableImageColumn` - Image columns
-- ✅ `TableActionsColumn` - Row actions menu
-- ✅ `TableAction` - Individual action items
-
-### Benefits
-- 🚫 **No Conflicts** - Won't clash with native HTML or other libraries
-- 🎯 **Clear Intent** - Easy to identify form/table-specific components
-- 💡 **Better DX** - Improved autocomplete and IntelliSense
-- 🔄 **Consistent** - Same naming pattern across all components
+- ✅ `Table`, `TableTextColumn`, `TableSelectColumn`, `TableImageColumn`
+- ✅ `TableActionsColumn`, `TableAction`
 
 ## Requirements
 
 - **Node.js** 18.0.0 or higher
-- **Next.js** 14.0.0 or higher
-- **React** 18.0.0 or higher
+- **Next.js** 15.0.0 or higher
+- **React** 19.0.0 or higher
 
 ## Tech Stack
 
-- [Next.js 14](https://nextjs.org) - React framework
-- [React 18](https://react.dev) - UI library
-- [Tailwind CSS](https://tailwindcss.com) - Styling
+- [Next.js 15](https://nextjs.org) - React framework
+- [React 19](https://react.dev) - UI library
+- [NextAuth.js v4](https://next-auth.js.org) - Authentication
+- [Tailwind CSS v4](https://tailwindcss.com) - Styling
+- [Prisma 6](https://www.prisma.io) - Database ORM
 - [shadcn/ui](https://ui.shadcn.com) - Base components
 - [TypeScript](https://www.typescriptlang.org) - Type safety
-- [Prisma](https://www.prisma.io) - Database ORM
-
 
 ## Contributing
 
@@ -407,6 +355,7 @@ MIT License - see LICENSE for details
 ## Acknowledgments
 
 Built with and inspired by:
+
 - [shadcn/ui](https://ui.shadcn.com) by [@shadcn](https://twitter.com/shadcn)
 - [Filament](https://filamentphp.com) for form builder inspiration
 - The Next.js and React communities
@@ -415,4 +364,4 @@ Built with and inspired by:
 
 **⭐ Star this repo if you find it useful!**
 
-**📦 NPM Package**: [create-shadpanel-next](https://www.npmjs.com/package/create-shadpanel-next)
+**📦 NPM Package**: [shadpanel](https://www.npmjs.com/package/shadpanel)

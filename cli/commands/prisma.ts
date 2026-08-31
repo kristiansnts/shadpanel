@@ -4,8 +4,67 @@ import chalk from "chalk"
 import path from "path"
 import fs from "fs-extra"
 import { logger } from "../utils/logger"
-import { generatePrismaSchema } from "../utils/db"
+import { getDriver, writePrismaSchema } from "../utils/db"
 import { promptDatabaseInit, createEnvFile } from "../utils/db-prompts"
+import { emitPrismaClient, PRISMA_CLIENT_RELATIVE_PATH } from "../generate/emit-prisma-client"
+import { emitSeed, SEED_RELATIVE_PATH } from "../generate/emit-seed"
+import { getCliSeedTemplate } from "../generate/cli-templates"
+import { writeFile, type WriteOutcome } from "../generate/write-policy"
+import { prisma5Warnings, warnPrisma5 } from "../generate/prisma5"
+import { ensurePrismaSeed } from "../utils/dependencies"
+
+function logWriteOutcome(outcome: WriteOutcome, filePath: string) {
+  switch (outcome) {
+    case "written":
+      logger.success(`Created: ${filePath}`)
+      break
+    case "overwritten":
+      logger.info(`Overwritten: ${filePath}`)
+      break
+    case "skipped":
+      logger.info(`Skipped (exists): ${filePath}`)
+      break
+    case "would-create":
+      logger.info(`Would create: ${filePath}`)
+      break
+    case "would-overwrite":
+      logger.info(`Would overwrite: ${filePath}`)
+      break
+    case "would-skip":
+      logger.info(`Would skip: ${filePath}`)
+      break
+  }
+}
+
+async function warnIfPrisma5(projectDir: string): Promise<void> {
+  let packageJson: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> } | undefined
+  let schema: string | undefined
+  let templateContent: string | undefined
+
+  const pkgPath = path.join(projectDir, "package.json")
+  if (await fs.pathExists(pkgPath)) {
+    try {
+      packageJson = await fs.readJson(pkgPath)
+    } catch {
+      // ignore invalid package.json
+    }
+  }
+
+  const schemaPath = path.join(projectDir, "prisma", "schema.prisma")
+  if (await fs.pathExists(schemaPath)) {
+    schema = await fs.readFile(schemaPath, "utf-8")
+  }
+
+  const templatePath = path.join(projectDir, "prisma", "schema.prisma.template")
+  if (await fs.pathExists(templatePath)) {
+    templateContent = await fs.readFile(templatePath, "utf-8")
+  }
+
+  const warnings = prisma5Warnings({ packageJson, schema, templateContent })
+  if (warnings.length) {
+    warnPrisma5(warnings, (message) => logger.warn(message))
+  }
+}
 
 // Check if Prisma is already installed
 function isPrismaInstalled(projectDir: string): boolean {
@@ -32,11 +91,13 @@ export function prismaCommand(): Command {
   // db:init - Interactive database setup
   db.command("init")
     .description("Initialize database configuration interactively")
-    .action(async () => {
+    .option("--force", "Overwrite existing schema, client, and seed files")
+    .action(async (options: { force?: boolean }) => {
       try {
         logger.info("🗄️  Let's set up your database!\n")
 
         const projectDir = process.cwd()
+        const force = !!options.force
 
         // Check if Prisma is already installed
         const prismaAlreadyInstalled = isPrismaInstalled(projectDir)
@@ -49,40 +110,49 @@ export function prismaCommand(): Command {
           process.exit(1)
         }
 
+        await warnIfPrisma5(projectDir)
+
         // Step 2: Create .env file with template
         const spinner1 = logger.spinner("Creating environment configuration...")
         spinner1.start()
         await createEnvFile(projectDir, answers.driver)
         spinner1.succeed("Environment configuration created (.env)")
 
-        // Step 3: Create prisma directory and template
+        // Step 3: Write prisma/schema.prisma (CLI Prisma 6 template — never a user .template)
         const spinner2 = logger.spinner("Setting up Prisma files...")
         spinner2.start()
 
         const prismaDir = path.join(projectDir, "prisma")
         await fs.ensureDir(prismaDir)
 
-        const templatePath = path.join(prismaDir, "schema.prisma.template")
-        const defaultTemplate = `datasource db {
-  provider = "{{DATABASE_DRIVER}}"
-  url      = "{{DATABASE_URL}}"
-}
+        const leftoverTemplate = path.join(prismaDir, "schema.prisma.template")
+        const schemaPath = path.join(prismaDir, "schema.prisma")
+        if (!(await fs.pathExists(schemaPath)) && (await fs.pathExists(leftoverTemplate))) {
+          const leftoverMsg =
+            "prisma/schema.prisma.template is obsolete (ShadPanel 1.3.1 leftover). Writing prisma/schema.prisma from the Prisma 6 CLI template. Edit schema.prisma; do not keep using .template."
+          logger.warn(leftoverMsg)
+          console.error(leftoverMsg)
+        }
 
-generator client {
-  provider = "prisma-client-js"
-}
+        const schemaOutcome = await writePrismaSchema(projectDir, answers.driver, { force })
+        logWriteOutcome(schemaOutcome, "prisma/schema.prisma")
 
-// Add your models here
-// Example:
-// model User {
-//   id        Int      @id @default(autoincrement())
-//   email     String   @unique
-//   name      String?
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-// }
-`
-        await fs.writeFile(templatePath, defaultTemplate)
+        const clientOutcome = await writeFile({
+          path: path.join(projectDir, PRISMA_CLIENT_RELATIVE_PATH),
+          content: emitPrismaClient(),
+          force,
+        })
+        logWriteOutcome(clientOutcome, PRISMA_CLIENT_RELATIVE_PATH)
+
+        const seedContent = (await getCliSeedTemplate()) || emitSeed()
+        const seedOutcome = await writeFile({
+          path: path.join(projectDir, SEED_RELATIVE_PATH),
+          content: seedContent,
+          force,
+        })
+        logWriteOutcome(seedOutcome, SEED_RELATIVE_PATH)
+
+        await ensurePrismaSeed(projectDir)
         spinner2.succeed("Prisma files created")
 
         // Step 4: Install Prisma packages (pinned) if requested
@@ -94,10 +164,10 @@ generator client {
 
           try {
             const pmCommands: Record<string, string> = {
-              npm: "npm install @prisma/client@6.18.0 && npm install -D prisma@6.18.0",
-              pnpm: "pnpm add @prisma/client@6.18.0 && pnpm add -D prisma@6.18.0",
-              yarn: "yarn add @prisma/client@6.18.0 && yarn add -D prisma@6.18.0",
-              bun: "bun add @prisma/client@6.18.0 && bun add -D prisma@6.18.0",
+              npm: "npm install @prisma/client@6.18.0 && npm install -D prisma@6.18.0 tsx",
+              pnpm: "pnpm add @prisma/client@6.18.0 && pnpm add -D prisma@6.18.0 tsx",
+              yarn: "yarn add @prisma/client@6.18.0 && yarn add -D prisma@6.18.0 tsx",
+              bun: "bun add @prisma/client@6.18.0 && bun add -D prisma@6.18.0 tsx",
             }
 
             execSync(pmCommands[answers.packageManager] || pmCommands.npm, {
@@ -108,14 +178,13 @@ generator client {
           } catch (error) {
             spinner3.fail("Failed to install Prisma packages")
             logger.warn(
-              `You can install manually with: ${answers.packageManager} add -D prisma@6.18.0 && ${answers.packageManager} add @prisma/client@6.18.0`
+              `You can install manually with: ${answers.packageManager} add -D prisma@6.18.0 tsx && ${answers.packageManager} add @prisma/client@6.18.0`
             )
           }
         }
 
         // Step 5: Generate Prisma Client if schema exists
         try {
-          const schemaPath = path.join(projectDir, "prisma", "schema.prisma")
           const generateCmd: Record<string, string> = {
             npm: "npx prisma generate",
             pnpm: "pnpm prisma generate",
@@ -138,23 +207,15 @@ generator client {
           logger.warn("Failed to run 'prisma generate' automatically. You can run it manually later.")
         }
 
-        // Success message
-  logger.newline()
-  logger.success("✅ Database setup complete!")
+        logger.newline()
+        logger.success("✅ Database setup complete!")
         logger.newline()
         logger.info("📝 Next steps:")
-        logger.info("   1. Edit your .env file with actual database credentials")
-        logger.info("   2. Edit prisma/schema.prisma.template to add your models")
-        logger.info("   3. Update schema.prisma with your models")
-        logger.info("   4. Edit prisma/schema.prisma to add/modify models")
-        logger.info("   5. Run 'shadpanel db migrate' to create migrations")
-        logger.info("   6. Run 'shadpanel db generate' to generate Prisma Client")
-        logger.info("   7. Run 'shadpanel db studio' to browse your database")
-        logger.newline()
-        logger.warn("⚠️  Important:")
-        logger.info("   • Edit schema.prisma for one-time changes")
-        logger.info("   • Edit schema.prisma.template for reusable templates")
-        logger.info("   • Use --regenerate flag to regenerate from template")
+        logger.info("   1. Edit .env with real credentials")
+        logger.info("   2. Edit prisma/schema.prisma (add models)")
+        logger.info("   3. shadpanel db migrate make <name>")
+        logger.info("   4. shadpanel db migrate run")
+        logger.info("   5. shadpanel resource <Model>")
         logger.newline()
         logger.info(`💡 Tip: Your .env has been configured for ${answers.driver.toUpperCase()}`)
       } catch (error) {
@@ -166,25 +227,24 @@ generator client {
 
 
 
-  // db:generate - Generate schema + Prisma Client
+  // db:generate - Prisma Client only (does not rewrite schema.prisma)
   db.command("generate")
-    .description("Generate Prisma schema and Prisma Client")
+    .description("Generate Prisma Client from prisma/schema.prisma")
     .action(async () => {
       try {
-        // Step 1: Generate schema
-        const spinner1 = logger.spinner("Generating Prisma schema from template...")
-        spinner1.start()
-        await generatePrismaSchema()
-        spinner1.succeed("Prisma schema generated")
+        const schemaPath = path.join(process.cwd(), "prisma", "schema.prisma")
+        if (!(await fs.pathExists(schemaPath))) {
+          logger.error("prisma/schema.prisma not found. Run 'shadpanel db init' first.")
+          process.exit(1)
+        }
 
-        // Step 2: Generate Prisma Client
         const spinner2 = logger.spinner("Generating Prisma Client...")
         spinner2.start()
         execSync("npx prisma generate", { stdio: "inherit" })
         spinner2.succeed("Prisma Client generated")
 
         logger.newline()
-        logger.success("Database setup complete!")
+        logger.success("Prisma Client generated!")
       } catch (error) {
         logger.error("Failed to generate Prisma Client")
         console.error(error)
@@ -235,7 +295,7 @@ generator client {
       try {
         // Ensure schema exists
         if (!fs.existsSync(schemaPath)) {
-          logger.error("prisma/schema.prisma not found. Create it first or run 'shadpanel db generate'.")
+          logger.error("prisma/schema.prisma not found. Create it first or run 'shadpanel db init'.")
           process.exit(1)
         }
 
@@ -440,15 +500,18 @@ generator client {
   // db:push - Push schema to database (without regenerating)
   db.command("push")
     .description("Push Prisma schema to database (no migration files)")
-    .option("--regenerate", "Regenerate schema from template before pushing")
-    .action(async (options?: { regenerate?: boolean }) => {
+    .option("--regenerate", "Re-copy schema from the CLI Prisma 6 template (skip-if-exists unless --force)")
+    .option("--force", "Overwrite prisma/schema.prisma when used with --regenerate")
+    .action(async (options?: { regenerate?: boolean; force?: boolean }) => {
       try {
-        // Step 1: Optionally regenerate schema from template
         if (options?.regenerate) {
-          const spinner1 = logger.spinner("Generating Prisma schema from template...")
+          const spinner1 = logger.spinner("Copying Prisma 6 schema from CLI template...")
           spinner1.start()
-          await generatePrismaSchema()
-          spinner1.succeed("Prisma schema generated from template")
+          const outcome = await writePrismaSchema(process.cwd(), getDriver(), {
+            force: !!options.force,
+          })
+          spinner1.succeed("Schema copy finished")
+          logWriteOutcome(outcome, "prisma/schema.prisma")
         }
 
         // Step 2: Push to database
@@ -491,7 +554,7 @@ generator client {
         execSync(pullCmd, { stdio: "inherit" })
 
         spinner.succeed("Database introspected successfully!")
-        logger.info("Run 'shadpanel db:generate' to generate Prisma Client")
+        logger.info("Run 'shadpanel db generate' to generate Prisma Client")
       } catch (error) {
         logger.error("Failed to pull schema")
         console.error(error)
@@ -535,7 +598,7 @@ generator client {
         spinner.succeed("Database seeded successfully!")
       } catch (error) {
         logger.error("Failed to seed database")
-        logger.info("Make sure you have a 'prisma.seed' script in package.json")
+        logger.info("Edit prisma/seed.ts and make sure package.json has a prisma.seed script")
         console.error(error)
         process.exit(1)
       }
