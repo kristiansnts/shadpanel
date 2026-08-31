@@ -12,6 +12,8 @@ describe("emitSchema", () => {
     expect(schema).not.toContain("{{DATABASE_DRIVER}}")
     expect(schema).not.toMatch(/mysql:\/\/.*:password@/)
     expect(schema).not.toContain("previewFeatures")
+    expect(schema).toMatch(/model\s+Session/)
+    expect(schema).toMatch(/token\s+String/)
     expect(schemaWritesTemplatePath("prisma/schema.prisma")).toBe(false)
     expect(schemaWritesTemplatePath("prisma/schema.prisma.template")).toBe(true)
   })

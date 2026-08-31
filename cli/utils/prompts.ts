@@ -144,7 +144,7 @@ export async function promptInitQuestions(
         return instType === "full-panel" ? null : "confirm"
       },
       name: "authentication",
-      message: "Do you want to include authentication (NextAuth.js)?",
+      message: "Do you want to include authentication (Better Auth)?",
       initial: (prev: any, answers: any) => (answers.installationType || installationType) === "auth-components",
     },
     // Auth providers (skip if specified via CLI flags)

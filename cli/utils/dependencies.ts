@@ -2,6 +2,7 @@ import { execSync } from "child_process"
 import fs from "fs-extra"
 import path from "path"
 import { ensureTsxDevDependency, patchPrismaSeedConfig } from "../generate/emit-seed"
+import { GENERATED_BETTER_AUTH } from "../generate/stack"
 
 export type PackageManager = "npm" | "pnpm" | "yarn" | "bun"
 
@@ -137,9 +138,17 @@ export async function updatePackageJson(
   // Base dependencies are already in the template
   // Only add conditional dependencies here
 
+  packageJson.dependencies = packageJson.dependencies || {}
+
   if (options.authentication) {
-    packageJson.dependencies["next-auth"] = "^4.24.11"
+    packageJson.dependencies["better-auth"] = GENERATED_BETTER_AUTH
+  } else {
+    delete packageJson.dependencies["better-auth"]
   }
+
+  // Never emit NextAuth on the 1.5+ generated stack
+  delete packageJson.dependencies["next-auth"]
+  delete packageJson.devDependencies?.["next-auth"]
 
   await fs.writeJson(packageJsonPath, packageJson, { spaces: 2 })
 }

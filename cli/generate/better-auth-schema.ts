@@ -1,13 +1,14 @@
-datasource db {
-  provider = "{{DATABASE_DRIVER}}"
-  url      = env("DATABASE_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
-}
-
-// Better Auth (Prisma adapter) — required by email/password and OAuth sessions
+/**
+ * Better Auth + Prisma adapter core models (Prisma 6).
+ *
+ * Verified against Better Auth 1.7 Prisma CLI snapshot (User / Session /
+ * Account / Verification). Account.issuer + unique (issuer, accountId) are
+ * required by Better Auth 1.7 — this is not the NextAuth Prisma/JWT adapter
+ * (no sessionToken, no VerificationToken).
+ *
+ * Plugin tables (TwoFactor, username) are omitted on purpose.
+ */
+export const BETTER_AUTH_PRISMA_MODELS = `// Better Auth (Prisma adapter) — required by email/password and OAuth sessions
 model User {
   id            String    @id
   name          String
@@ -72,11 +73,25 @@ model Verification {
   @@index([identifier])
   @@map("verification")
 }
+`
 
-// Add your resource models here
-// Example:
-// model Example {
-//   id        Int      @id @default(autoincrement())
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-// }
+/**
+ * True when schema looks like Better Auth's Prisma adapter, not NextAuth's.
+ */
+export function isBetterAuthPrismaSchema(schema: string): boolean {
+  const hasSessionModel = /model\s+Session\b/.test(schema)
+  const hasSessionTokenField = /model\s+Session[\s\S]*?\btoken\s+String/.test(schema)
+  const hasAccount = /model\s+Account\b/.test(schema)
+  const hasVerification = /model\s+Verification\b/.test(schema)
+  const nextAuthJwt =
+    /model\s+VerificationToken\b/.test(schema) ||
+    /sessionToken/.test(schema) ||
+    /providerAccountId/.test(schema)
+  return (
+    hasSessionModel &&
+    hasSessionTokenField &&
+    hasAccount &&
+    hasVerification &&
+    !nextAuthJwt
+  )
+}

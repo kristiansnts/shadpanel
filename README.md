@@ -14,7 +14,7 @@ That writes list, create, and edit screens under `/admin/dashboard/posts`, plus 
 ## Quick Start
 
 ```bash
-# 1. Scaffold a Next.js 15 + NextAuth v4 app
+# 1. Scaffold a Next.js 16 + Better Auth app
 npx shadpanel@latest init my-app
 # or, if installed globally:
 shadpanel init my-app
@@ -36,20 +36,20 @@ shadpanel resource Post
 
 This will:
 
-- ✅ Scaffold a Next.js 15 + React 19 + NextAuth.js v4 admin app
+- ✅ Scaffold a Next.js 16 + React 19 + Better Auth admin app
 - ✅ Write Prisma 6 `schema.prisma` with `url = env("DATABASE_URL")` (no user-project `.template`)
 - ✅ Emit `lib/prisma.ts` (PrismaClient singleton) and a `prisma/seed.ts` stub
 - ✅ Generate list/create/edit pages from scalar fields (String, Int, Boolean, DateTime, enum)
 - ✅ Skip existing files on re-run (use `--force` to overwrite)
 
-Relation object fields are skipped in 1.4.0. Foreign-key scalars (`authorId`, `roleId`) stay number/string inputs.
+Relation object fields are skipped. Foreign-key scalars (`authorId`, `roleId`) stay number/string inputs (Resource 2.0 relation widgets are not in this release).
 
 ## Features
 
 - 🎨 **50+ UI Components** - Complete shadcn/ui component library
 - 📝 **Form Builder** - Filament-inspired declarative forms with validation
 - 📊 **Data Table** - Powerful tables with sorting, searching, and pagination
-- 🔐 **Authentication** - NextAuth.js v4 with Google, GitHub, and credentials
+- 🔐 **Authentication** - Better Auth with Google, GitHub, and credentials
 - 🗃️ **Resource generator** - `shadpanel resource` from a Prisma model
 - 🎯 **TypeScript First** - Full type safety and IntelliSense support
 - 🌙 **Dark Mode Ready** - Built-in theme support
@@ -173,6 +173,7 @@ For development without migrations:
 
 ```
 my-app/
+├── proxy.ts                        # Next.js 16 Node proxy (not Edge middleware)
 ├── app/
 │   ├── layout.tsx
 │   ├── page.tsx
@@ -185,13 +186,15 @@ my-app/
 │   │           ├── page.tsx
 │   │           ├── create/page.tsx
 │   │           └── edit/[id]/page.tsx
-│   └── api/auth/[...nextauth]/route.ts
+│   └── api/auth/[...all]/route.ts  # Better Auth handler
 ├── components/ui/
 ├── lib/
 │   ├── utils.ts
-│   └── prisma.ts                   # PrismaClient singleton (db init / resource)
+│   ├── auth.ts                     # Better Auth server
+│   ├── auth-client.ts
+│   └── prisma.ts                   # PrismaClient singleton (init / db init / resource)
 ├── prisma/
-│   ├── schema.prisma               # Prisma 6, url = env("DATABASE_URL")
+│   ├── schema.prisma               # Prisma 6 + Better Auth session/account/verification
 │   └── seed.ts                     # stub — add your own data
 ├── config/menu.ts
 ├── package.json
@@ -260,7 +263,7 @@ export default function UsersTable({ users }) {
 ### Authentication Example
 
 ```tsx
-import { signIn, signOut, useSession } from 'next-auth/react'
+import { signOut, useSession } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 
 export default function AuthButton() {
@@ -275,7 +278,7 @@ export default function AuthButton() {
     )
   }
 
-  return <Button onClick={() => signIn()}>Sign In</Button>
+  return <Button asChild><a href="/admin/login">Sign In</a></Button>
 }
 ```
 
@@ -324,19 +327,21 @@ ShadPanel uses **prefixed naming** for form and table components:
 
 ## Requirements
 
-- **Node.js** 18.0.0 or higher
-- **Next.js** 15.0.0 or higher
+- **Node.js** 20.9.0 or higher (Next.js 16)
+- **Next.js** 16.0.0 or higher
 - **React** 19.0.0 or higher
 
 ## Tech Stack
 
-- [Next.js 15](https://nextjs.org) - React framework
+- [Next.js 16](https://nextjs.org) - React framework (`proxy.ts`, Node runtime)
 - [React 19](https://react.dev) - UI library
-- [NextAuth.js v4](https://next-auth.js.org) - Authentication
+- [Better Auth](https://www.better-auth.com) - Authentication (Prisma adapter)
 - [Tailwind CSS v4](https://tailwindcss.com) - Styling
 - [Prisma 6](https://www.prisma.io) - Database ORM
 - [shadcn/ui](https://ui.shadcn.com) - Base components
 - [TypeScript](https://www.typescriptlang.org) - Type safety
+
+Apps already generated on ShadPanel 1.4.0 are not migrated automatically. This stack applies to **new** `shadpanel init` apps.
 
 ## Contributing
 

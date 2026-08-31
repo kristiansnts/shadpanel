@@ -1,8 +1,8 @@
-'use client';
+'use client'
 
 import { cn } from "@/lib/utils"
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, FieldDescription, FieldGroup, FieldLabel, Input } from "@/components/ui"
-import { signIn } from "next-auth/react"
+import { signIn } from "@/lib/auth-client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthProvidersContext } from "@/contexts/auth-providers-context"
@@ -24,17 +24,17 @@ export function LoginForm({
     setError('')
 
     try {
-      const result = await signIn('credentials', {
+      const { error: signInError } = await signIn.email({
         email,
         password,
-        redirect: false,
       })
 
-      if (result?.error) {
+      if (signInError) {
         setError('Invalid credentials')
-      } else {
-        router.push('/admin/dashboard')
+        return
       }
+
+      router.push('/admin/dashboard')
     } catch {
       setError('An error occurred')
     } finally {
@@ -43,11 +43,11 @@ export function LoginForm({
   }
 
 {{#GOOGLE}}  const handleGoogleSignIn = () => {
-    signIn('google', { callbackUrl: '/admin/dashboard' })
+    signIn.social({ provider: "google", callbackURL: "/admin/dashboard" })
   }
 {{/GOOGLE}}
 {{#GITHUB}}  const handleGitHubSignIn = () => {
-    signIn('github', { callbackUrl: '/admin/dashboard' })
+    signIn.social({ provider: "github", callbackURL: "/admin/dashboard" })
   }
 {{/GITHUB}}
 
@@ -63,7 +63,6 @@ export function LoginForm({
         <CardContent>
           <form onSubmit={handleSubmit}>
             <FieldGroup>
-              {/* OAuth Providers */}
               {(config.google || config.github) && (
                 <Field>
 {{#GOOGLE}}                  {config.google && (
@@ -101,7 +100,6 @@ export function LoginForm({
 {{/GITHUB}}                </Field>
               )}
 
-              {/* Separator - only show if both OAuth and credentials are enabled */}
 {{#CREDENTIALS}}              {(config.google || config.github) && config.credentials && (
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
@@ -115,7 +113,6 @@ export function LoginForm({
                 </div>
               )}
 
-              {/* Credentials Form - only show if credentials are enabled */}
               {config.credentials && (
                 <>
                   <Field>
@@ -123,7 +120,7 @@ export function LoginForm({
                     <Input
                       id="email"
                       type="email"
-                      placeholder="admin@example.com"
+                      placeholder="you@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -134,7 +131,6 @@ export function LoginForm({
                     <Input
                       id="password"
                       type="password"
-                      placeholder="admin123"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
@@ -157,7 +153,7 @@ export function LoginForm({
         </CardContent>
       </Card>
       <FieldDescription className="px-6 text-center text-xs text-muted-foreground">
-        Demo credentials: admin@example.com / admin123
+        Need an account? <a href="/admin/signup">Sign up</a>
       </FieldDescription>
     </div>
   )

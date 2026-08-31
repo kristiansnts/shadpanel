@@ -1,10 +1,34 @@
+import { BETTER_AUTH_PRISMA_MODELS } from "./better-auth-schema"
+
 export type SchemaDriver = "mysql" | "postgresql" | "sqlite" | "mongodb"
 
 export const SCHEMA_RELATIVE_PATH = "prisma/schema.prisma"
 
+function fallbackSchema(driver: SchemaDriver): string {
+  return `datasource db {
+  provider = "${driver}"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+${BETTER_AUTH_PRISMA_MODELS}
+// Add your resource models here
+// Example:
+// model Example {
+//   id        Int      @id @default(autoincrement())
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+// }
+`
+}
+
 /**
  * Prisma 6 schema. Always `url = env("DATABASE_URL")`.
  * Never interpolates credentials. Never writes a user-project `.template`.
+ * Includes Better Auth Prisma-adapter models (session/account/verification).
  */
 export function emitSchema(options: { driver: SchemaDriver; template?: string }): string {
   const driver = options.driver
@@ -17,23 +41,7 @@ export function emitSchema(options: { driver: SchemaDriver; template?: string })
       .replace(/\n?\s*previewFeatures\s*=\s*\[[^\]]*\]/g, "")
   }
 
-  return `datasource db {
-  provider = "${driver}"
-  url      = env("DATABASE_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
-}
-
-// Add your models here
-// Example:
-// model Example {
-//   id        Int      @id @default(autoincrement())
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-// }
-`
+  return fallbackSchema(driver)
 }
 
 export function schemaWritesTemplatePath(relativePath: string): boolean {

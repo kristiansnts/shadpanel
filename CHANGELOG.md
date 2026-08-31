@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-08-31
+
+Brief **BR-20260831-1**. Stack upgrade for **new generated apps only**. Apps already scaffolded on 1.4.0 are not migrated.
+
+Current stack: **Next.js 16**, **React 19**, **Better Auth**, **Prisma 6.18**. Not Resource 2.0, not Prisma 7, not an automatic upgrade of existing 1.4.0 apps.
+
+### Added
+
+- `shadpanel init` (auth on) emits a Next.js 16 app with Better Auth (`better-auth`), `lib/auth.ts`, `lib/auth-client.ts`, and `app/api/auth/[...all]/route.ts`.
+- Next.js 16 `proxy.ts` (Node runtime) redirects unauthenticated `/admin/dashboard` requests to login. NextAuth `middleware.ts` is not generated.
+- `db init` Prisma 6 schema includes Better Auth `User` / `Session` / `Account` / `Verification` models (Prisma adapter, including Better Auth 1.7 `Account.issuer`).
+- Credentials (email/password) sign-in and sign-up via Better Auth. Google/GitHub OAuth stay wired through `.env.example` when selected at init.
+
+### Changed
+
+- Generated `package.json` pins `next` ^16 and `eslint-config-next` ^16. `next-auth` is not a generated dependency.
+- Unauthenticated dashboard access is gated by `proxy.ts` + Better Auth `auth.api.getSession`, not NextAuth middleware.
+- README / current-stack docs: Next 16 + Better Auth. Do not treat Next 15 or NextAuth v4 as the current generator stack.
+
+### Fixed
+
+- Resource generation is unchanged on the new stack: `import prisma from '@/lib/prisma'` and `lib/prisma.ts` still exist. FK scalars stay plain inputs (no Resource 2.0 relation widgets).
+
+### Removed
+
+- NextAuth.js v4 from generated templates (`[...nextauth]`, `next-auth` dependency, NextAuth JWT session callbacks).
+
 ## [1.4.1] - 2026-08-31
 
 Post-1.4.0 QA fixes. No stack change, no Resource 2.0, no Better Auth.

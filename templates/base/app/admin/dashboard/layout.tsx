@@ -16,8 +16,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Sun, Moon, LogOut } from "lucide-react"
-{{#GOOGLE}}{{/GOOGLE}}{{#GITHUB}}{{/GITHUB}}{{#CREDENTIALS}}import { useSession, signOut } from "next-auth/react"
-{{/CREDENTIALS}}import { useTheme } from "next-themes"
+{{#AUTH}}import { useSession, signOut } from "@/lib/auth-client"
+{{/AUTH}}import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 
 export default function DashboardLayout({
@@ -25,15 +25,15 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-{{#GOOGLE}}{{/GOOGLE}}{{#GITHUB}}{{/GITHUB}}{{#CREDENTIALS}}  const { data: session } = useSession()
-{{/CREDENTIALS}}  const { theme, setTheme } = useTheme()
+{{#AUTH}}  const { data: session } = useSession()
+{{/AUTH}}  const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-{{#GOOGLE}}{{/GOOGLE}}{{#GITHUB}}{{/GITHUB}}{{#CREDENTIALS}}  const getInitials = (name?: string | null) => {
+{{#AUTH}}  const getInitials = (name?: string | null) => {
     if (!name) return "U"
     return name
       .split(" ")
@@ -43,11 +43,12 @@ export default function DashboardLayout({
       .slice(0, 2)
   }
 
-  const handleSignOut = () => {
-    signOut({ callbackUrl: '/admin/login' })
+  const handleSignOut = async () => {
+    await signOut()
+    window.location.href = "/admin/login"
   }
 
-{{/CREDENTIALS}}  return (
+{{/AUTH}}  return (
     <SidebarProvider
       style={
         {
@@ -74,7 +75,7 @@ export default function DashboardLayout({
                     <Sun className="h-5 w-5" />
                   )}
                 </Button>
-{{#GOOGLE}}{{/GOOGLE}}{{#GITHUB}}{{/GITHUB}}{{#CREDENTIALS}}                <DropdownMenu>
+{{#AUTH}}                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
@@ -104,7 +105,7 @@ export default function DashboardLayout({
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-{{/CREDENTIALS}}              </>
+{{/AUTH}}              </>
             )}
           </div>
         </header>
