@@ -32,6 +32,7 @@ program
   .option("--github", "Include GitHub OAuth provider")
   .option("--credentials", "Include email/password authentication (default)")
   .option("--no-demos", "Skip demo pages")
+  .option("--skip-demos", "Skip demo pages (same as --no-demos)")
   .action(async (projectName?: string, options?: any) => {
     await initCommand(projectName, options)
   })

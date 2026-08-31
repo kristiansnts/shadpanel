@@ -12,6 +12,7 @@ import { getCliSeedTemplate } from "../generate/cli-templates"
 import { writeFile, type WriteOutcome } from "../generate/write-policy"
 import { prisma5Warnings, warnPrisma5 } from "../generate/prisma5"
 import { ensurePrismaSeed } from "../utils/dependencies"
+import { runPrisma } from "../utils/prisma-cli"
 
 function logWriteOutcome(outcome: WriteOutcome, filePath: string) {
   switch (outcome) {
@@ -183,21 +184,12 @@ export function prismaCommand(): Command {
           }
         }
 
-        // Step 5: Generate Prisma Client if schema exists
+        // Step 5: Generate Prisma Client if schema exists (pinned Prisma 6.18, never unpinned npx)
         try {
-          const generateCmd: Record<string, string> = {
-            npm: "npx prisma generate",
-            pnpm: "pnpm prisma generate",
-            yarn: "yarn prisma generate",
-            bun: "bunx prisma generate",
-          }
           if (await fs.pathExists(schemaPath)) {
             const spinnerGen = logger.spinner("Generating Prisma Client...")
             spinnerGen.start()
-            execSync(generateCmd[answers.packageManager] || generateCmd.npm, {
-              stdio: "inherit",
-              cwd: projectDir,
-            })
+            runPrisma(["generate"], { cwd: projectDir, stdio: "inherit" })
             spinnerGen.succeed("Prisma Client generated")
           } else {
             logger.warn("schema.prisma not found. Skipping 'prisma generate'.")
@@ -240,7 +232,7 @@ export function prismaCommand(): Command {
 
         const spinner2 = logger.spinner("Generating Prisma Client...")
         spinner2.start()
-        execSync("npx prisma generate", { stdio: "inherit" })
+        runPrisma(["generate"], { stdio: "inherit" })
         spinner2.succeed("Prisma Client generated")
 
         logger.newline()
@@ -314,14 +306,18 @@ export function prismaCommand(): Command {
           const spinner = logger.spinner("Generating migration from schema changes...")
           spinner.start()
           try {
-            const cmd = [
-              "npx prisma migrate diff",
-              "--from-schema-datasource prisma/schema.prisma",
-              "--to-schema-datamodel prisma/schema.prisma",
-              "--script",
-            ].join(" ")
-
-            const sql = execSync(cmd, { cwd: projectDir, encoding: "utf-8" })
+            const sql = runPrisma(
+              [
+                "migrate",
+                "diff",
+                "--from-schema-datasource",
+                "prisma/schema.prisma",
+                "--to-schema-datamodel",
+                "prisma/schema.prisma",
+                "--script",
+              ],
+              { cwd: projectDir, encoding: "utf-8", stdio: "pipe" }
+            )
             const trimmed = (sql || "").trim()
 
             if (!trimmed || /No\s+changes?/i.test(trimmed)) {
@@ -362,12 +358,12 @@ export function prismaCommand(): Command {
       try {
         const spinner1 = logger.spinner("Applying migrations...")
         spinner1.start()
-        execSync("npx prisma migrate deploy", { stdio: "inherit" })
+        runPrisma(["migrate", "deploy"], { stdio: "inherit" })
         spinner1.succeed("Migrations applied successfully")
 
         const spinner2 = logger.spinner("Generating Prisma Client...")
         spinner2.start()
-        execSync("npx prisma generate", { stdio: "inherit" })
+        runPrisma(["generate"], { stdio: "inherit" })
         spinner2.succeed("Done!")
       } catch (error) {
         logger.error("Failed to apply migrations")
@@ -439,7 +435,7 @@ export function prismaCommand(): Command {
         // Capture output even if exit code is non-zero
         let output = ""
         try {
-          output = execSync("npx prisma migrate status", { encoding: "utf-8", stdio: "pipe" })
+          output = runPrisma(["migrate", "status"], { encoding: "utf-8", stdio: "pipe" })
         } catch (err: any) {
           // Prisma exits with code 1 when there are pending/drift migrations
           // Combine both stdout and stderr as Prisma may write to both
@@ -485,7 +481,7 @@ export function prismaCommand(): Command {
   migrate.action(() => {
     try {
       logger.info("No subcommand provided. Running pending migrations...\n")
-      execSync("npx prisma migrate deploy", { stdio: "inherit" })
+      runPrisma(["migrate", "deploy"], { stdio: "inherit" })
       logger.newline()
       logger.success("Migrations applied")
     } catch (error) {
@@ -517,7 +513,7 @@ export function prismaCommand(): Command {
         // Step 2: Push to database
         const spinner2 = logger.spinner("Pushing schema to database...")
         spinner2.start()
-        execSync("npx prisma db push", { stdio: "inherit" })
+        runPrisma(["db", "push"], { stdio: "inherit" })
         spinner2.succeed("Schema pushed to database")
 
         logger.newline()
@@ -548,10 +544,8 @@ export function prismaCommand(): Command {
         const spinner = logger.spinner("Introspecting database...")
         spinner.start()
 
-        const pullCmd = options.force
-          ? "npx prisma db pull --force"
-          : "npx prisma db pull"
-        execSync(pullCmd, { stdio: "inherit" })
+        const pullArgs = options.force ? ["db", "pull", "--force"] : ["db", "pull"]
+        runPrisma(pullArgs, { stdio: "inherit" })
 
         spinner.succeed("Database introspected successfully!")
         logger.info("Run 'shadpanel db generate' to generate Prisma Client")
@@ -573,12 +567,12 @@ export function prismaCommand(): Command {
         logger.info("Press Ctrl+C to stop")
         logger.newline()
 
-        let studioCmd = `npx prisma studio --port ${options.port || 5555}`
+        const studioArgs = ["studio", "--port", options.port || "5555"]
         if (options.browser) {
-          studioCmd += ` --browser ${options.browser}`
+          studioArgs.push("--browser", options.browser)
         }
 
-        execSync(studioCmd, { stdio: "inherit" })
+        runPrisma(studioArgs, { stdio: "inherit" })
       } catch (error) {
         // User pressed Ctrl+C, exit gracefully
         logger.newline()
@@ -594,7 +588,7 @@ export function prismaCommand(): Command {
       try {
         const spinner = logger.spinner("Seeding database...")
         spinner.start()
-        execSync("npx prisma db seed", { stdio: "inherit" })
+        runPrisma(["db", "seed"], { stdio: "inherit" })
         spinner.succeed("Database seeded successfully!")
       } catch (error) {
         logger.error("Failed to seed database")
@@ -610,12 +604,12 @@ export function prismaCommand(): Command {
     .option("--force", "Skip confirmation prompt")
     .action((options: { force?: boolean }) => {
       try {
-        const resetCmd = options.force
-          ? "npx prisma migrate reset --force"
-          : "npx prisma migrate reset"
+        const resetArgs = options.force
+          ? ["migrate", "reset", "--force"]
+          : ["migrate", "reset"]
 
         logger.warn("This will delete all data in your database!")
-        execSync(resetCmd, { stdio: "inherit" })
+        runPrisma(resetArgs, { stdio: "inherit" })
         logger.success("Database reset complete!")
       } catch (error) {
         logger.error("Failed to reset database")
