@@ -1,6 +1,5 @@
 'use client';
 
-import { SessionProvider } from "next-auth/react"
 import { AuthProvidersProvider } from "@/contexts/auth-providers-context"
 import { PanelProvider } from "@/contexts/panel-context"
 import { ThemeProvider } from "next-themes"
@@ -14,19 +13,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
       enableSystem
       disableTransitionOnChange
     >
-      <SessionProvider>
-        <AuthProvidersProvider>
-          <PanelProvider>
-            {children}
-            <Toaster
-              position="top-right"
-              expand={false}
-              richColors
-              closeButton
-            />
-          </PanelProvider>
-        </AuthProvidersProvider>
-      </SessionProvider>
+      <AuthProvidersProvider>
+        <PanelProvider>
+          {children}
+          <Toaster
+            position="top-right"
+            expand={false}
+            richColors
+            closeButton
+          />
+        </PanelProvider>
+      </AuthProvidersProvider>
     </ThemeProvider>
   )
 }

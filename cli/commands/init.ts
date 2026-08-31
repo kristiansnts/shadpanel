@@ -25,6 +25,8 @@ import {
 } from "../utils/dependencies"
 import { initGitRepository, isGitAvailable } from "../utils/git"
 import { shouldCopyDemoPages } from "../utils/skip-demos"
+import { emitPrismaClient, PRISMA_CLIENT_RELATIVE_PATH } from "../generate/emit-prisma-client"
+import { writeFile } from "../generate/write-policy"
 import packageJson from "../../package.json"
 
 // ES module equivalent of __dirname
@@ -102,15 +104,16 @@ export async function initCommand(projectName?: string, options: CliOptions = {}
   }
   logger.newline()
 
-  // Generate a secure random secret for NextAuth
-  const nextAuthSecret = randomBytes(32).toString('base64')
+  // Generate a secure random secret for Better Auth
+  const betterAuthSecret = randomBytes(32).toString('base64')
 
   // Create template variables
   const variables: TemplateVariables = {
     APP_NAME: appName,
     PROJECT_NAME: answers.projectName,
     SHADPANEL_VERSION: packageJson.version,
-    NEXTAUTH_SECRET: nextAuthSecret,
+    BETTER_AUTH_SECRET: betterAuthSecret,
+    AUTH: answers.authentication,
     GOOGLE: answers.authProviders.includes("google"),
     GITHUB: answers.authProviders.includes("github"),
     CREDENTIALS: answers.authProviders.includes("credentials"),
@@ -166,6 +169,11 @@ export async function initCommand(projectName?: string, options: CliOptions = {}
     await copyUIComponents(packageDir, targetDir)
     await copyLibUtils(packageDir, targetDir)
     await copyHooks(packageDir, targetDir)
+    await writeFile({
+      path: path.join(targetDir, PRISMA_CLIENT_RELATIVE_PATH),
+      content: emitPrismaClient(),
+      force: false,
+    })
     spinnerComponents.succeed("UI components copied")
 
     // Step 6: Create .env file

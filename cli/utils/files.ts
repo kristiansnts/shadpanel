@@ -5,7 +5,8 @@ export interface TemplateVariables {
   APP_NAME: string
   PROJECT_NAME: string
   SHADPANEL_VERSION: string
-  NEXTAUTH_SECRET: string
+  BETTER_AUTH_SECRET: string
+  AUTH: boolean
   GOOGLE: boolean
   GITHUB: boolean
   CREDENTIALS: boolean
@@ -67,11 +68,12 @@ export function processTemplate(
     variables.SHADPANEL_VERSION
   )
   processed = processed.replace(
-    /\{\{NEXTAUTH_SECRET\}\}/g,
-    variables.NEXTAUTH_SECRET
+    /\{\{BETTER_AUTH_SECRET\}\}/g,
+    variables.BETTER_AUTH_SECRET
   )
 
   // Process conditional blocks
+  processed = processConditional(processed, "AUTH", variables.AUTH)
   processed = processConditional(processed, "GOOGLE", variables.GOOGLE)
   processed = processConditional(processed, "GITHUB", variables.GITHUB)
   processed = processConditional(processed, "CREDENTIALS", variables.CREDENTIALS)
