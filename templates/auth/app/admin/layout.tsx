@@ -17,18 +17,19 @@ export default function AdminLayout({
   const isPublicPage = publicPages.includes(pathname)
 
   useEffect(() => {
+    if (isPublicPage) return
     if (isPending) return
-    if (!session && !isPublicPage) {
+    if (!session) {
       router.push('/admin/login')
     }
   }, [session, isPending, router, isPublicPage])
 
-  if (isPending) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
-  }
-
   if (isPublicPage) {
     return <>{children}</>
+  }
+
+  if (isPending) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
   }
 
   if (!session) {

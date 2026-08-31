@@ -101,6 +101,17 @@ describe("generated stack (BR-20260831-1) — fails if Next 15 / NextAuth v4 rem
     expect(errorBlock).not.toContain("router.push")
   })
 
+  it("admin layout renders login without waiting on session (public pages first)", () => {
+    const layout = readFileSync(
+      path.join(TEMPLATES_DIR, "auth", "app", "admin", "layout.tsx"),
+      "utf-8"
+    )
+    const publicReturn = layout.indexOf("if (isPublicPage)")
+    const pendingReturn = layout.indexOf("if (isPending)")
+    expect(publicReturn).toBeGreaterThanOrEqual(0)
+    expect(pendingReturn).toBeGreaterThan(publicReturn)
+  })
+
   it("Better Auth server config uses the Prisma adapter, not a NextAuth JWT adapter", () => {
     expect(AUTH_SERVER_SOURCE).toContain('from "better-auth/adapters/prisma"')
     expect(AUTH_SERVER_SOURCE).toContain("prismaAdapter")
