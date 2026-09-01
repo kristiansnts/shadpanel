@@ -20,6 +20,7 @@ model Post {
 }
 model User {
   id    Int    @id @default(autoincrement())
+  name  String
   posts Post[]
 }
 `
@@ -35,6 +36,7 @@ describe("init + one-model resource import graph", () => {
       modelName: "Post",
       fields: models.Post,
       enums,
+      models,
       resourceName: "Post",
     })
 
@@ -62,9 +64,14 @@ describe("init + one-model resource import graph", () => {
     expect(create?.content).toContain("FormDateTimePicker")
     expect(create?.content).toContain("FormSelect")
     expect(create?.content).toContain("FormCheckbox")
-    expect(create?.content).not.toContain("accessor='author'")
-    expect(create?.content).toContain("accessor='authorId'")
-    expect(create?.content).not.toMatch(/authorId[\s\S]{0,80}FormSelect/)
+    expect(create?.content).toContain("FormSelect accessor='authorId'")
+    expect(create?.content).toContain("label='Author'")
+    expect(create?.content).toContain("userOptions")
+    expect(create?.content).not.toContain("FormInput accessor='authorId'")
+    expect(create?.content).not.toMatch(/FormInput accessor='authorId'[\s\S]{0,40}numeric/)
+
+    const view = resourceFiles.find((f) => f.relativePath.endsWith("view/[id]/page.tsx"))
+    expect(view).toBeDefined()
   })
 
   it("fails when the prisma client file is omitted from the emit set", () => {

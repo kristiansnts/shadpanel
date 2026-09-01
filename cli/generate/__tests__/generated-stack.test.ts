@@ -211,8 +211,10 @@ model Post {
     expect(PRISMA_CLIENT_RELATIVE_PATH).toBe("lib/prisma.ts")
 
     const create = resourceFiles.find((f) => f.relativePath.endsWith("create/page.tsx"))
+    // authorId is a lone scalar (no belongsTo User) — still a numeric input, not FormSelect
     expect(create?.content).toContain("accessor='authorId'")
-    expect(create?.content).not.toMatch(/authorId[\s\S]{0,80}FormSelect/)
+    expect(create?.content).toContain("FormInput accessor='authorId'")
+    expect(create?.content).not.toMatch(/FormSelect accessor='authorId'/)
   })
 
   it("updatePackageJson with auth off still strips next-auth", async () => {
