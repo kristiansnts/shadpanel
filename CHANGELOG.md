@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-09-01
+
+Brief **BR-20260901-1**. **Resource 2.0** for `shadpanel resource`. Stack unchanged: **Next.js 16**, **Better Auth**, **Prisma 6.18**. Not Prisma 7, not 2FA, not per-resource policies, not M2M RBAC.
+
+### Added
+
+- belongsTo (n:1) on create/edit → `FormSelect` of related records. Label is the first of `name` / `title` / `email` / `label` string scalars on the related model, else `id` (e.g. `Post.author`, not a raw numeric `authorId` input).
+- hasMany and implicit M2M on the generated view/show page → a list of related records (e.g. `User.posts`, `Post.tags`). Relation fields are not dropped.
+- View page at `view/[id]` plus a list-row View action.
+
+### Changed
+
+- Covered FK scalars (`authorId` when `author` is a belongsTo) are skipped on forms; the relation `FormSelect` writes the FK.
+- A lone `User.roleId` scalar stays a numeric/string input. A belongsTo `Role` `FormSelect` for a single FK is emitted only when `Role` is a related model — not many-to-many permissions.
+
+### Unchanged
+
+- Enums stay static `FormSelect`.
+- Skip-if-exists default; `--force` overwrites; `--dry-run` still previews.
+- `resource` without `prisma/schema.prisma` errors `Prisma not initialized` (exit 2, no crash).
+- M2M is view-list only (no M2M `FormSelect` on create/edit).
+
 ## [1.5.0] - 2026-08-31
 
 Brief **BR-20260831-1**. Stack upgrade for **new generated apps only**. Apps already scaffolded on 1.4.0 are not migrated.

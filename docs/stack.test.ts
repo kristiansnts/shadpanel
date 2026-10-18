@@ -30,6 +30,12 @@ describe("README stack smoke", () => {
     expect(stack).not.toMatch(/Next\.js 15/)
   })
 
+  it("documents Resource 2.0 relation widgets", () => {
+    expect(README).toMatch(/Resource 2\.0/)
+    expect(README).toMatch(/belongsTo/)
+    expect(README).toMatch(/hasMany/)
+  })
+
   it("heroes shadpanel resource before create-shadpanel-next", () => {
     const resourceAt = README.indexOf("shadpanel resource")
     expect(resourceAt).toBeGreaterThanOrEqual(0)

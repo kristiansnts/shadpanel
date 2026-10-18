@@ -1,6 +1,13 @@
 import type { Field } from "./parse-prisma"
 import { humanize, kebabCase, pascalCase, pluralize, prismaDelegate, singularize } from "./names"
-import { isFormValueWidget, mapScalarWidget, type WidgetResult } from "./widgets"
+import {
+  isFormValueWidget,
+  isViewRelationWidget,
+  mapScalarWidget,
+  type RelationWidgetMeta,
+  type WidgetContext,
+  type WidgetResult,
+} from "./widgets"
 
 export type EmittedFile = {
   relativePath: string
@@ -12,6 +19,7 @@ export type EmitResourceOptions = {
   fields: Field[]
   enums: Record<string, string[]>
   resourceName: string
+  models?: Record<string, Field[]>
 }
 
 export type MenuPatch = {
@@ -46,27 +54,105 @@ function resourceNames(options: EmitResourceOptions) {
   }
 }
 
-function widgetsFor(fields: Field[], enums: Record<string, string[]>): { field: Field; widget: WidgetResult }[] {
-  return fields.map((field) => ({ field, widget: mapScalarWidget(field, enums) }))
+function widgetContext(options: EmitResourceOptions): WidgetContext {
+  return {
+    enums: options.enums,
+    models: options.models || { [options.modelName]: options.fields },
+    modelName: options.modelName,
+  }
 }
 
-function formWidgets(fields: Field[], enums: Record<string, string[]>) {
-  return widgetsFor(fields, enums).filter(
+function widgetsFor(options: EmitResourceOptions): { field: Field; widget: WidgetResult }[] {
+  const ctx = widgetContext(options)
+  return options.fields.map((field) => ({
+    field,
+    widget: mapScalarWidget(field, options.enums, ctx),
+  }))
+}
+
+function formWidgets(options: EmitResourceOptions) {
+  return widgetsFor(options).filter(
     ({ widget }) => widget.kind !== "skip" || widget.reason === "bytes"
   )
 }
 
-function valueWidgets(fields: Field[], enums: Record<string, string[]>) {
-  return widgetsFor(fields, enums).filter(({ widget }) => isFormValueWidget(widget))
+function valueWidgets(options: EmitResourceOptions) {
+  return widgetsFor(options).filter(({ widget }) => isFormValueWidget(widget))
 }
 
-function formComponentImports(fields: Field[], enums: Record<string, string[]>): string {
+function viewRelationWidgets(options: EmitResourceOptions) {
+  return widgetsFor(options).filter(({ widget }) => isViewRelationWidget(widget))
+}
+
+function belongsToMetas(options: EmitResourceOptions): RelationWidgetMeta[] {
+  const seen = new Set<string>()
+  const metas: RelationWidgetMeta[] = []
+  for (const { widget } of valueWidgets(options)) {
+    if (widget.relation?.kind === "belongsTo" && !seen.has(widget.relation.relatedModel)) {
+      seen.add(widget.relation.relatedModel)
+      metas.push(widget.relation)
+    }
+  }
+  return metas
+}
+
+function formComponentImports(options: EmitResourceOptions): string {
   const used = new Set<string>(["Form", "FormSection", "FormGrid", "Button"])
-  for (const { widget } of valueWidgets(fields, enums)) {
+  for (const { widget } of valueWidgets(options)) {
     for (const name of widget.imports) used.add(name)
   }
   const names = FORM_IMPORT_ORDER.filter((name) => used.has(name))
   return names.join(", ")
+}
+
+function includeObject(options: EmitResourceOptions): string {
+  const relations = options.fields.filter((f) => f.isRelation)
+  if (!relations.length) return ""
+  const entries = relations.map((f) => `${f.name}: true`).join(", ")
+  return `{ ${entries} }`
+}
+
+function submitExpr(widget: WidgetResult): string {
+  const name = widget.accessor
+  if (widget.relation?.kind === "belongsTo") {
+    if (widget.relation.fkIsNumber) {
+      return `        ${name}: values.${name} === '' || values.${name} == null ? null : Number(values.${name})`
+    }
+    return `        ${name}: values.${name} === '' ? null : values.${name}`
+  }
+  return `        ${name}: values.${name} as any`
+}
+
+function hydrateExpr(widget: WidgetResult): string {
+  const name = widget.accessor
+  if (widget.relation?.kind === "belongsTo") {
+    return `          ;(initialValues as any).${name} = (row as any).${name} != null ? String((row as any).${name}) : ${widget.initialValue}`
+  }
+  return `          ;(initialValues as any).${name} = (row as any).${name} ?? ${widget.initialValue}`
+}
+
+function emitRelatedOptionActions(options: EmitResourceOptions): string {
+  const metas = belongsToMetas(options)
+  if (!metas.length) return ""
+  return (
+    "\n" +
+    metas
+      .map((meta) => {
+        const plural = pluralize(meta.relatedDelegate)
+        return `
+export async function ${meta.optionsGetter}() {
+  try {
+    const rows = await prisma.${meta.relatedDelegate}.findMany({ take: 100 })
+    return rows
+  } catch (error) {
+    console.error('Failed to fetch ${plural}:', error)
+    throw new Error('Failed to fetch ${plural}')
+  }
+}
+`
+      })
+      .join("")
+  )
 }
 
 function emitActions(options: EmitResourceOptions): string {
@@ -76,6 +162,11 @@ function emitActions(options: EmitResourceOptions): string {
   const delegate = prismaDelegate(options.modelName)
   const idType = idIsNumber ? "number" : "string"
   const idExpr = idIsNumber ? "Number(id)" : "id"
+  const include = includeObject(options)
+  const findManyArgs = include ? `{ take: 100, include: ${include} }` : "{ take: 100 }"
+  const findUniqueArgs = include
+    ? `{ where: { ${idName}: ${idExpr} }, include: ${include} }`
+    : `{ where: { ${idName}: ${idExpr} } }`
 
   return `// generated by shadpanel CLI
 "use server"
@@ -85,7 +176,7 @@ import { revalidatePath } from 'next/cache'
 
 export async function get${pascal}s() {
   try {
-    const rows = await prisma.${delegate}.findMany({ take: 100 })
+    const rows = await prisma.${delegate}.findMany(${findManyArgs})
     return rows
   } catch (error) {
     console.error('Failed to fetch ${plural}:', error)
@@ -95,7 +186,7 @@ export async function get${pascal}s() {
 
 export async function get${pascal}ById(id: ${idType}) {
   try {
-    const row = await prisma.${delegate}.findUnique({ where: { ${idName}: ${idExpr} } })
+    const row = await prisma.${delegate}.findUnique(${findUniqueArgs})
     return row
   } catch (error) {
     console.error('Failed to fetch ${singular}:', error)
@@ -135,7 +226,7 @@ export async function delete${pascal}(id: ${idType}) {
     return { success: false, message: 'Failed to delete ${singular}.' }
   }
 }
-`
+${emitRelatedOptionActions(options)}`
 }
 
 function emitListPage(options: EmitResourceOptions): string {
@@ -143,7 +234,7 @@ function emitListPage(options: EmitResourceOptions): string {
   const { singular, plural, folderName, pascal, idField } = resourceNames(options)
   const idName = idField?.name || "id"
   const listFields = fields
-    .filter((f) => !f.isRelation && f.name !== idName)
+    .filter((f) => !f.isRelation && !f.isForeignKey && f.name !== idName)
     .slice(0, 2)
 
   const normalizedFields = listFields
@@ -166,7 +257,7 @@ function emitListPage(options: EmitResourceOptions): string {
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Table, TableSelectColumn, TableTextColumn, TableActionsColumn, TableAction, Button } from '@/components/ui'
-import { Plus, Edit, Trash } from 'lucide-react'
+import { Plus, Edit, Trash, Eye } from 'lucide-react'
 import { toast } from 'sonner'
 import { get${pascal}s, delete${pascal} } from '@/app/admin/dashboard/${folderName}/actions'
 
@@ -195,6 +286,10 @@ ${normalizedFields}
     }
     fetchData()
   }, [])
+
+  const handleView = (row: any) => {
+    router.push('/admin/dashboard/${folderName}/view/' + row.${idName})
+  }
 
   const handleEdit = (row: any) => {
     router.push('/admin/dashboard/${folderName}/edit/' + row.${idName})
@@ -257,6 +352,7 @@ ${normalizedFields}
         <TableSelectColumn />
 ${columns}
         <TableActionsColumn>
+          <TableAction icon={Eye} label='View' onClick={(row)=> handleView(row as any)} />
           <TableAction icon={Edit} label='Edit' onClick={(row)=> handleEdit(row as any)} />
           <TableAction separator label='' onClick={()=>{}} />
           <TableAction icon={Trash} label='Delete' onClick={(row)=> handleDelete(row as any)} variant='destructive' />
@@ -268,20 +364,69 @@ ${columns}
 `
 }
 
+function relatedOptionsState(metas: RelationWidgetMeta[]): string {
+  if (!metas.length) return ""
+  return metas
+    .map(
+      (meta) =>
+        `  const [${meta.optionsVar}, set${meta.relatedModel}Options] = useState<Array<{ label: string; value: string }>>([])`
+    )
+    .join("\n")
+}
+
+function relatedOptionsEffect(metas: RelationWidgetMeta[]): string {
+  if (!metas.length) return ""
+  const loads = metas
+    .map(
+      (meta) => `        const ${meta.relatedDelegate}Rows = await ${meta.optionsGetter}()
+        if (cancelled) return
+        set${meta.relatedModel}Options((${meta.relatedDelegate}Rows || []).map((r: any) => ({
+          label: r.${meta.labelField} != null && r.${meta.labelField} !== '' ? String(r.${meta.labelField}) : String(r.${meta.idField}),
+          value: String(r.${meta.idField}),
+        })))`
+    )
+    .join("\n")
+  return `
+  useEffect(() => {
+    let cancelled = false
+    async function loadRelated() {
+      try {
+${loads}
+      } catch (error) {
+        if (!cancelled) toast.error('Failed to load related records')
+      }
+    }
+    loadRelated()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+`
+}
+
+function relatedOptionsImports(metas: RelationWidgetMeta[]): string {
+  return metas.map((m) => m.optionsGetter).join(", ")
+}
+
 function emitCreatePage(options: EmitResourceOptions): string {
-  const { fields, enums } = options
   const { singular, folderName, pascal } = resourceNames(options)
-  const values = valueWidgets(fields, enums)
-  const widgets = formWidgets(fields, enums)
-  const imports = formComponentImports(fields, enums)
+  const values = valueWidgets(options)
+  const widgets = formWidgets(options)
+  const imports = formComponentImports(options)
+  const metas = belongsToMetas(options)
+  const optionGetters = relatedOptionsImports(metas)
+  const actionImports = optionGetters
+    ? `import { create${pascal}, ${optionGetters} } from '../actions'`
+    : `import { create${pascal} } from '../actions'`
+  const reactImports = metas.length
+    ? "import { useState, useEffect } from 'react'"
+    : "import { useState } from 'react'"
 
   const initial = values
-    .map(({ field, widget }) => `        ${field.name}: ${widget.initialValue}`)
+    .map(({ widget }) => `        ${widget.accessor}: ${widget.initialValue}`)
     .join(",\n")
 
-  const submit = values
-    .map(({ field }) => `        ${field.name}: values.${field.name} as any`)
-    .join(",\n")
+  const submit = values.map(({ widget }) => submitExpr(widget)).join(",\n")
 
   const controls = widgets
     .map(({ widget }) => `            ${widget.jsx}`)
@@ -290,16 +435,17 @@ function emitCreatePage(options: EmitResourceOptions): string {
   return `// generated by shadpanel CLI
 'use client'
 
-import { useState } from 'react'
+${reactImports}
 import { useRouter } from 'next/navigation'
 import { ${imports} } from '@/components/ui'
 import { toast } from 'sonner'
-import { create${pascal} } from '../actions'
+${actionImports}
 
 export default function Create${pascal}Page() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
-
+${relatedOptionsState(metas)}
+${relatedOptionsEffect(metas)}
   const handleSubmit = async (values: Record<string, any>) => {
     setIsSubmitting(true)
     try {
@@ -355,28 +501,25 @@ ${controls}
 }
 
 function emitEditPage(options: EmitResourceOptions): string {
-  const { fields, enums } = options
   const { singular, folderName, pascal, idField } = resourceNames(options)
   const idIsNumber = idField?.type === "Int"
   const idCast = idIsNumber ? "Number(idParam as string)" : "String(idParam)"
-  const values = valueWidgets(fields, enums)
-  const widgets = formWidgets(fields, enums)
-  const imports = formComponentImports(fields, enums)
+  const values = valueWidgets(options)
+  const widgets = formWidgets(options)
+  const imports = formComponentImports(options)
+  const metas = belongsToMetas(options)
+  const optionGetters = relatedOptionsImports(metas)
+  const actionImports = optionGetters
+    ? `import { get${pascal}ById, update${pascal}, ${optionGetters} } from '../../actions'`
+    : `import { get${pascal}ById, update${pascal} } from '../../actions'`
 
   const initial = values
-    .map(({ field, widget }) => `    ${field.name}: ${widget.initialValue}`)
+    .map(({ widget }) => `    ${widget.accessor}: ${widget.initialValue}`)
     .join(",\n")
 
-  const hydrate = values
-    .map(
-      ({ field, widget }) =>
-        `          ;(initialValues as any).${field.name} = (row as any).${field.name} ?? ${widget.initialValue}`
-    )
-    .join("\n")
+  const hydrate = values.map(({ widget }) => hydrateExpr(widget)).join("\n")
 
-  const submit = values
-    .map(({ field }) => `        ${field.name}: values.${field.name} as any`)
-    .join(",\n")
+  const submit = values.map(({ widget }) => submitExpr(widget)).join(",\n")
 
   const controls = widgets
     .map(({ widget }) => `            ${widget.jsx}`)
@@ -389,7 +532,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ${imports} } from '@/components/ui'
 import { toast } from 'sonner'
-import { get${pascal}ById, update${pascal} } from '../../actions'
+${actionImports}
 
 export default function Edit${pascal}Page() {
   const params = useParams()
@@ -398,10 +541,11 @@ export default function Edit${pascal}Page() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+${relatedOptionsState(metas)}
   const [initialValues, setInitialValues] = useState({
 ${initial}
   })
-
+${relatedOptionsEffect(metas)}
   useEffect(() => {
     async function fetchData() {
       if (!idParam) {
@@ -482,6 +626,134 @@ ${controls}
 `
 }
 
+function viewScalarRows(options: EmitResourceOptions): string {
+  const { idField } = resourceNames(options)
+  const idName = idField?.name || "id"
+  return options.fields
+    .filter((f) => !f.isRelation && !f.isForeignKey)
+    .map((f) => {
+      const label = humanize(f.name)
+      return `          <div>
+            <dt className='text-sm font-medium text-muted-foreground'>${label}</dt>
+            <dd className='mt-1'>${f.name === idName ? `{String(row.${f.name} ?? '')}` : `{row.${f.name} == null ? '—' : String(row.${f.name})}`}</dd>
+          </div>`
+    })
+    .join("\n")
+}
+
+function viewRelationSections(options: EmitResourceOptions): string {
+  const rels = viewRelationWidgets(options)
+  if (!rels.length) return ""
+  return rels
+    .map(({ field, widget }) => {
+      const meta = widget.relation
+      const heading = meta?.label || humanize(field.name)
+      const labelField = meta?.labelField || "id"
+      const idField = meta?.idField || "id"
+      const listExpr = field.isList
+        ? `(row.${field.name} || [])`
+        : `(row.${field.name} ? [row.${field.name}] : [])`
+      return `
+        <section className='space-y-2' data-relation='${field.name}' data-relation-kind='${field.relationKind || widget.reason}'>
+          <h2 className='text-lg font-semibold'>${heading}</h2>
+          {${listExpr}.length === 0 ? (
+            <p className='text-muted-foreground'>No ${field.name}</p>
+          ) : (
+            <ul className='list-disc space-y-1 pl-6'>
+              {${listExpr}.map((item: any) => (
+                <li key={String(item.${idField})}>
+                  {item.${labelField} != null && item.${labelField} !== '' ? String(item.${labelField}) : String(item.${idField})}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>`
+    })
+    .join("\n")
+}
+
+function emitViewPage(options: EmitResourceOptions): string {
+  const { singular, folderName, pascal, idField } = resourceNames(options)
+  const idIsNumber = idField?.type === "Int"
+  const idCast = idIsNumber ? "Number(idParam as string)" : "String(idParam)"
+  const scalars = viewScalarRows(options)
+  const relations = viewRelationSections(options)
+
+  return `// generated by shadpanel CLI
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { Button } from '@/components/ui'
+import { toast } from 'sonner'
+import { get${pascal}ById } from '../../actions'
+
+export default function View${pascal}Page() {
+  const params = useParams()
+  const router = useRouter()
+  const idParam = params?.id
+  const [row, setRow] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchData() {
+      if (!idParam) {
+        setError('Missing ${singular} id')
+        setLoading(false)
+        return
+      }
+      try {
+        setLoading(true)
+        const record = await get${pascal}ById(${idCast} as any)
+        if (record) {
+          setRow(record)
+        } else {
+          setError('${pascal} not found')
+        }
+      } catch (err: any) {
+        setError(err?.message || 'Failed to load ${singular}')
+        toast.error('Failed to load ${singular}')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [idParam])
+
+  if (loading) return <div className='p-8'>Loading ${singular}...</div>
+  if (error) return <div className='p-8 text-destructive'>{error}</div>
+  if (!row) return <div className='p-8'>${pascal} not found</div>
+
+  return (
+    <div className='flex h-full flex-col'>
+      <div className='flex items-center justify-between p-8 pb-4'>
+        <div>
+          <h1 className='text-4xl font-bold'>${pascal}</h1>
+          <p className='mt-2 text-muted-foreground'>View ${singular} details</p>
+        </div>
+        <div className='flex gap-2'>
+          <Button variant='outline' onClick={() => router.push('/admin/dashboard/${folderName}')}>
+            Back
+          </Button>
+          <Button onClick={() => router.push('/admin/dashboard/${folderName}/edit/' + idParam)}>
+            Edit
+          </Button>
+        </div>
+      </div>
+
+      <div className='space-y-8 px-8 pb-8'>
+        <dl className='grid gap-4 sm:grid-cols-2'>
+${scalars}
+        </dl>
+${relations}
+      </div>
+    </div>
+  )
+}
+`
+}
+
 export function emitResource(options: EmitResourceOptions): EmittedFile[] {
   const { folderName } = resourceNames(options)
   const base = `app/admin/dashboard/${folderName}`
@@ -491,6 +763,7 @@ export function emitResource(options: EmitResourceOptions): EmittedFile[] {
     { relativePath: `${base}/page.tsx`, content: emitListPage(options) },
     { relativePath: `${base}/create/page.tsx`, content: emitCreatePage(options) },
     { relativePath: `${base}/edit/[id]/page.tsx`, content: emitEditPage(options) },
+    { relativePath: `${base}/view/[id]/page.tsx`, content: emitViewPage(options) },
   ]
 }
 

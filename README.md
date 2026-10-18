@@ -9,7 +9,7 @@
 shadpanel resource Post
 ```
 
-That writes list, create, and edit screens under `/admin/dashboard/posts`, plus server actions that import `@/lib/prisma`.
+That writes list, create, edit, and view screens under `/admin/dashboard/posts`, plus server actions that import `@/lib/prisma`.
 
 ## Quick Start
 
@@ -39,10 +39,10 @@ This will:
 - ✅ Scaffold a Next.js 16 + React 19 + Better Auth admin app
 - ✅ Write Prisma 6 `schema.prisma` with `url = env("DATABASE_URL")` (no user-project `.template`)
 - ✅ Emit `lib/prisma.ts` (PrismaClient singleton) and a `prisma/seed.ts` stub
-- ✅ Generate list/create/edit pages from scalar fields (String, Int, Boolean, DateTime, enum)
+- ✅ Generate list/create/edit/view pages from scalar fields and Prisma relations (Resource 2.0)
 - ✅ Skip existing files on re-run (use `--force` to overwrite)
 
-Relation object fields are skipped. Foreign-key scalars (`authorId`, `roleId`) stay number/string inputs (Resource 2.0 relation widgets are not in this release).
+**Resource 2.0:** belongsTo relations become a `FormSelect` of related records (human-readable `name` / `title` / `email` / `label`, else `id`). hasMany and M2M appear as lists on the view/show page. A lone `roleId` scalar stays a single input — not M2M RBAC.
 
 ## Features
 
@@ -96,7 +96,7 @@ shadpanel resource Post --force
 shadpanel resource Post --dry-run
 ```
 
-Create/edit widgets:
+Create/edit widgets (Resource 2.0):
 
 | Prisma type | Widget |
 |---|---|
@@ -104,9 +104,11 @@ Create/edit widgets:
 | `Int` / `Float` / `Decimal` | `FormInput` numeric |
 | `Boolean` | `FormCheckbox` |
 | `DateTime` | `FormDateTimePicker` |
-| enum | `FormSelect` |
-| relation objects | skipped |
-| FK scalars (`authorId`, `roleId`) | scalar input, not `FormSelect` |
+| enum | `FormSelect` (static options) |
+| belongsTo (n:1), e.g. `Post.author` | `FormSelect` of related records (label: name/title/email/label, else id) |
+| covered FK (`authorId` when `author` exists) | skipped — the belongsTo select writes the FK |
+| lone FK scalar (`roleId` with no `Role` relation) | scalar input |
+| hasMany / M2M | view/show list only (not a create/edit `FormSelect`) |
 
 ### Merging with Existing Projects
 
@@ -185,7 +187,8 @@ my-app/
 │   │       └── posts/              # from: shadpanel resource Post
 │   │           ├── page.tsx
 │   │           ├── create/page.tsx
-│   │           └── edit/[id]/page.tsx
+│   │           ├── edit/[id]/page.tsx
+│   │           └── view/[id]/page.tsx
 │   └── api/auth/[...all]/route.ts  # Better Auth handler
 ├── components/ui/
 ├── lib/
