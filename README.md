@@ -356,9 +356,10 @@ MIT License - see LICENSE for details
 
 ## Author
 
-**Your Name** ([@kristiansnts](https://github.com/kristiansnts))
+**kristiansnts** ([@kristiansnts](https://github.com/kristiansnts))
 - Email: epafroditus.kristian@gmail.com
 - GitHub: https://github.com/kristiansnts/shadpanel
+- Docs: https://shadpanel-docs.vercel.app
 
 ## Acknowledgments
 

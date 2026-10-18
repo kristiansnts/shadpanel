@@ -5,15 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.6.0] - 2026-09-01
+## [1.6.0] - 2026-10-18
 
-Brief **BR-20260901-1**. **Resource 2.0** for `shadpanel resource`. Stack unchanged: **Next.js 16**, **Better Auth**, **Prisma 6.18**. Not Prisma 7, not 2FA, not per-resource policies, not M2M RBAC.
+Brief **BR-20260901-1** ([#15](https://github.com/kristiansnts/shadpanel/pull/15)). **Resource 2.0** for `shadpanel resource`. Stack unchanged: **Next.js 16**, **Better Auth**, **Prisma 6.18**. Not Prisma 7, not 2FA, not per-resource policies, not M2M RBAC.
 
 ### Added
 
 - belongsTo (n:1) on create/edit → `FormSelect` of related records. Label is the first of `name` / `title` / `email` / `label` string scalars on the related model, else `id` (e.g. `Post.author`, not a raw numeric `authorId` input).
 - hasMany and implicit M2M on the generated view/show page → a list of related records (e.g. `User.posts`, `Post.tags`). Relation fields are not dropped.
 - View page at `view/[id]` plus a list-row View action.
+- `shadpanel db init --yes` (optional `--driver`, `--use-npm` / `--skip-install`) for non-interactive setup; default driver is `sqlite`.
+
+### Fixed
+
+- Publish tarball includes a project `.gitignore`: npm never packs files named `.gitignore`, so the template is shipped as `templates/config/gitignore` and renamed on `init`.
+- Credentials-only `init` typechecks again: auth `AuthProvidersConfig` always includes `google` / `github` / `credentials` (defaults via `{{BOOL:*}}`), matching UI components that reference those keys.
+- Generated resource `create` / `update` actions cast form `data` for Prisma client input types so `next build` succeeds.
+- Better Auth `Account` model no longer requires `issuer` (Better Auth never writes it; unique is `@@unique([providerId, accountId])`). Fixes schema-diff errors that would break account inserts on sign-up.
 
 ### Changed
 
@@ -29,7 +37,7 @@ Brief **BR-20260901-1**. **Resource 2.0** for `shadpanel resource`. Stack unchan
 
 ## [1.5.0] - 2026-08-31
 
-Brief **BR-20260831-1**. Stack upgrade for **new generated apps only**. Apps already scaffolded on 1.4.0 are not migrated.
+Brief **BR-20260831-1** ([#14](https://github.com/kristiansnts/shadpanel/pull/14)). Stack upgrade for **new generated apps only**. Apps already scaffolded on 1.4.0 are not migrated.
 
 Current stack: **Next.js 16**, **React 19**, **Better Auth**, **Prisma 6.18**. Not Resource 2.0, not Prisma 7, not an automatic upgrade of existing 1.4.0 apps.
 
@@ -56,7 +64,7 @@ Current stack: **Next.js 16**, **React 19**, **Better Auth**, **Prisma 6.18**. N
 
 ## [1.4.1] - 2026-08-31
 
-Post-1.4.0 QA fixes. No stack change, no Resource 2.0, no Better Auth.
+Post-1.4.0 QA fixes ([#13](https://github.com/kristiansnts/shadpanel/pull/13)). No stack change, no Resource 2.0, no Better Auth.
 
 ### Fixed
 
@@ -65,7 +73,7 @@ Post-1.4.0 QA fixes. No stack change, no Resource 2.0, no Better Auth.
 
 ## [1.4.0] - 2026-08-31
 
-Hygiene + docs release on the current templates: **Next.js 15**, **React 19**, **NextAuth.js v4**, **Prisma 6.18**. Not a stack upgrade and not Resource 2.0.
+Hygiene + docs release on the then-current templates ([#11](https://github.com/kristiansnts/shadpanel/pull/11) plan, [#12](https://github.com/kristiansnts/shadpanel/pull/12) implementation): **Next.js 15**, **React 19**, **NextAuth.js v4**, **Prisma 6.18**. Not a stack upgrade and not Resource 2.0.
 
 ### Added
 
@@ -105,3 +113,8 @@ Hygiene + docs release on the current templates: **Next.js 15**, **React 19**, *
 
 - `db generate` no longer interpolates `{{DATABASE_URL}}` from a user-project `.template` into `schema.prisma`. Edit `prisma/schema.prisma` and use `env("DATABASE_URL")`.
 - Re-running `resource` without `--force` leaves existing pages in place instead of failing the run.
+
+[1.6.0]: https://github.com/kristiansnts/shadpanel/compare/v1.5.0...v1.6.0
+[1.5.0]: https://github.com/kristiansnts/shadpanel/compare/v1.4.1...v1.5.0
+[1.4.1]: https://github.com/kristiansnts/shadpanel/compare/v1.4.0...v1.4.1
+[1.4.0]: https://github.com/kristiansnts/shadpanel/compare/v1.3.1...v1.4.0

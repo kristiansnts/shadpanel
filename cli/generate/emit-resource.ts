@@ -196,7 +196,8 @@ export async function get${pascal}ById(id: ${idType}) {
 
 export async function create${pascal}(data: Record<string, any>) {
   try {
-    const row = await prisma.${delegate}.create({ data })
+    // Form values are untyped; cast for Prisma's generated create input.
+    const row = await prisma.${delegate}.create({ data: data as any })
     revalidatePath('/admin/dashboard/${folderName}')
     return { success: true, message: '${pascal} created successfully', ${singular}: row }
   } catch (error: any) {
@@ -207,7 +208,10 @@ export async function create${pascal}(data: Record<string, any>) {
 
 export async function update${pascal}(id: ${idType}, data: Record<string, any>) {
   try {
-    const row = await prisma.${delegate}.update({ where: { ${idName}: ${idIsNumber ? "Number(id)" : "id"} }, data })
+    const row = await prisma.${delegate}.update({
+      where: { ${idName}: ${idIsNumber ? "Number(id)" : "id"} },
+      data: data as any,
+    })
     revalidatePath('/admin/dashboard/${folderName}')
     return { success: true, message: '${pascal} updated successfully', ${singular}: row }
   } catch (error) {

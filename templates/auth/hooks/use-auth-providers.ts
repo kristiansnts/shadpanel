@@ -8,18 +8,17 @@ export interface AuthProvider {
   type: 'oauth' | 'credentials'
 }
 
+/** Always includes all keys so UI components typecheck regardless of init flags. */
 export interface AuthProvidersConfig {
-{{#GOOGLE}}  google: boolean
-{{/GOOGLE}}{{#GITHUB}}  github: boolean
-{{/GITHUB}}{{#CREDENTIALS}}  credentials: boolean
-{{/CREDENTIALS}}
+  google: boolean
+  github: boolean
+  credentials: boolean
 }
 
 const defaultConfig: AuthProvidersConfig = {
-{{#GOOGLE}}  google: true,
-{{/GOOGLE}}{{#GITHUB}}  github: true,
-{{/GITHUB}}{{#CREDENTIALS}}  credentials: true,
-{{/CREDENTIALS}}
+  google: {{BOOL:GOOGLE}},
+  github: {{BOOL:GITHUB}},
+  credentials: {{BOOL:CREDENTIALS}},
 }
 
 export function useAuthProviders() {
