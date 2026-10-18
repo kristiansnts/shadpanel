@@ -71,6 +71,7 @@ describe("Resource 2.0 emit (BR-20260901-1)", () => {
     expect(actions).toContain("export async function getUserOptions")
     expect(actions).toContain("prisma.user.findMany")
     expect(actions).toContain("include: { author: true, tags: true }")
+    expect(actions).toContain("data: data as any")
   })
 
   it("User view lists hasMany posts and does not drop the relation", () => {

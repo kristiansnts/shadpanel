@@ -15,14 +15,16 @@ npm-debug.log*
 # Dependencies
 node_modules
 
-# CLI and config files
+# Dev-only root tooling (do not exclude templates/** copies)
 cli/
-tsup.config.ts
-tsconfig.json
+/tsup.config.ts
+/tsconfig.json
+/vitest.config.ts
+/test-parser.js
 
-# Git files
+# Git metadata only at package root — keep templates/**/.gitignore
 .git
-.gitignore
+/.gitignore
 
-# Packages
+# Legacy scaffolder (not part of shadpanel publish)
 packages/

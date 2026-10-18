@@ -163,11 +163,41 @@ describe("init + db init + resource on the new stack", () => {
     expect(envExample).toContain("GOOGLE_CLIENT_ID=")
     expect(envExample).toContain("GITHUB_CLIENT_ID=")
     expect(envExample).not.toContain("NEXTAUTH_")
+
+    expect(files).toContain(".gitignore")
+    const hooks = readFileSync(path.join(dir, "hooks", "use-auth-providers.ts"), "utf-8")
+    expect(hooks).toContain("google: true")
+    expect(hooks).toContain("github: true")
+    expect(hooks).toContain("credentials: true")
+    expect(hooks).not.toContain("{{BOOL:")
+  })
+
+  it("credentials-only auth hooks emit false for google/github and still type a full config", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "shadpanel-creds-"))
+    dirs.push(dir)
+    const credsOnly: TemplateVariables = {
+      ...VARS,
+      GOOGLE: false,
+      GITHUB: false,
+      CREDENTIALS: true,
+    }
+    await copyAuthTemplate(TEMPLATES_DIR, dir, credsOnly)
+    const hooks = readFileSync(path.join(dir, "hooks", "use-auth-providers.ts"), "utf-8")
+    expect(hooks).toContain("google: false")
+    expect(hooks).toContain("github: false")
+    expect(hooks).toContain("credentials: true")
+    expect(hooks).toMatch(/google:\s*boolean/)
+    expect(hooks).toMatch(/github:\s*boolean/)
+    expect(hooks).toMatch(/credentials:\s*boolean/)
   })
 
   it("db schema emit has Better Auth Session model; resource still imports prisma", () => {
     const schema = emitSchema({ driver: "postgresql" })
     expect(isBetterAuthPrismaSchema(schema)).toBe(true)
+    expect(schema).toContain("providerId")
+    expect(schema).toContain("@@unique([providerId, accountId])")
+    expect(schema).not.toMatch(/issuer\s+String/)
+    expect(schema).not.toContain("account_issuer_accountId_uidx")
 
     const nextAuthAdapter = `
 model Session {

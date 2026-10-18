@@ -73,6 +73,19 @@ export function processTemplate(
   )
 
   // Process conditional blocks
+  processed = processed.replace(
+    /\{\{BOOL:GOOGLE\}\}/g,
+    variables.GOOGLE ? "true" : "false"
+  )
+  processed = processed.replace(
+    /\{\{BOOL:GITHUB\}\}/g,
+    variables.GITHUB ? "true" : "false"
+  )
+  processed = processed.replace(
+    /\{\{BOOL:CREDENTIALS\}\}/g,
+    variables.CREDENTIALS ? "true" : "false"
+  )
+
   processed = processConditional(processed, "AUTH", variables.AUTH)
   processed = processConditional(processed, "GOOGLE", variables.GOOGLE)
   processed = processConditional(processed, "GITHUB", variables.GITHUB)
@@ -195,6 +208,12 @@ export async function copyConfigTemplate(
     // package.json.template -> package.json
     if (file.name === "package.json.template") {
       targetFileName = "package.json"
+      targetPath = path.join(targetDir, targetFileName)
+    }
+
+    // npm never packs files named ".gitignore"; ship as "gitignore" and rename on copy
+    if (file.name === "gitignore" || file.name === ".gitignore") {
+      targetFileName = ".gitignore"
       targetPath = path.join(targetDir, targetFileName)
     }
 

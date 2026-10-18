@@ -93,7 +93,27 @@ export function prismaCommand(): Command {
   db.command("init")
     .description("Initialize database configuration interactively")
     .option("--force", "Overwrite existing schema, client, and seed files")
-    .action(async (options: { force?: boolean }) => {
+    .option("--yes", "Use defaults without prompting (sqlite + install Prisma)")
+    .option(
+      "--driver <driver>",
+      "Database driver: mysql | postgresql | sqlite | mongodb"
+    )
+    .option("--use-npm", "Use npm when installing Prisma")
+    .option("--use-pnpm", "Use pnpm when installing Prisma")
+    .option("--use-yarn", "Use yarn when installing Prisma")
+    .option("--use-bun", "Use bun when installing Prisma")
+    .option("--skip-install", "Do not install Prisma packages")
+    .action(
+      async (options: {
+        force?: boolean
+        yes?: boolean
+        driver?: string
+        useNpm?: boolean
+        usePnpm?: boolean
+        useYarn?: boolean
+        useBun?: boolean
+        skipInstall?: boolean
+      }) => {
       try {
         logger.info("🗄️  Let's set up your database!\n")
 
@@ -103,8 +123,32 @@ export function prismaCommand(): Command {
         // Check if Prisma is already installed
         const prismaAlreadyInstalled = isPrismaInstalled(projectDir)
 
-        // Step 1: Prompt for database configuration
-        const answers = await promptDatabaseInit(prismaAlreadyInstalled)
+        const allowedDrivers = ["mysql", "postgresql", "sqlite", "mongodb"] as const
+        type Driver = (typeof allowedDrivers)[number]
+        let driver: Driver | undefined
+        if (options.driver) {
+          if (!allowedDrivers.includes(options.driver as Driver)) {
+            logger.error(
+              `Invalid --driver "${options.driver}". Use: ${allowedDrivers.join(", ")}`
+            )
+            process.exit(1)
+          }
+          driver = options.driver as Driver
+        }
+
+        let packageManager: "npm" | "pnpm" | "yarn" | "bun" | undefined
+        if (options.useNpm) packageManager = "npm"
+        if (options.usePnpm) packageManager = "pnpm"
+        if (options.useYarn) packageManager = "yarn"
+        if (options.useBun) packageManager = "bun"
+
+        // Step 1: Prompt for database configuration (or --yes defaults)
+        const answers = await promptDatabaseInit(prismaAlreadyInstalled, {
+          yes: !!options.yes || !!options.driver,
+          driver,
+          packageManager,
+          installPrisma: options.skipInstall ? false : undefined,
+        })
 
         if (!answers) {
           logger.error("Database initialization cancelled")

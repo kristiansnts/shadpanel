@@ -1,10 +1,9 @@
 /**
  * Better Auth + Prisma adapter core models (Prisma 6).
  *
- * Verified against Better Auth 1.7 Prisma CLI snapshot (User / Session /
- * Account / Verification). Account.issuer + unique (issuer, accountId) are
- * required by Better Auth 1.7 — this is not the NextAuth Prisma/JWT adapter
- * (no sessionToken, no VerificationToken).
+ * Matches Better Auth's core `account` table (`providerId` + `accountId`).
+ * Do not require `Account.issuer` — Better Auth never writes it, so a required
+ * issuer column breaks credential/OAuth account inserts (schema-diff error).
  *
  * Plugin tables (TwoFactor, username) are omitted on purpose.
  */
@@ -42,7 +41,6 @@ model Session {
 
 model Account {
   id                    String    @id
-  issuer                String
   accountId             String
   providerId            String
   userId                String
@@ -57,7 +55,7 @@ model Account {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  @@unique([issuer, accountId], map: "account_issuer_accountId_uidx")
+  @@unique([providerId, accountId])
   @@index([userId])
   @@map("account")
 }
@@ -82,6 +80,7 @@ export function isBetterAuthPrismaSchema(schema: string): boolean {
   const hasSessionModel = /model\s+Session\b/.test(schema)
   const hasSessionTokenField = /model\s+Session[\s\S]*?\btoken\s+String/.test(schema)
   const hasAccount = /model\s+Account\b/.test(schema)
+  const hasProviderId = /model\s+Account[\s\S]*?\bproviderId\s+String/.test(schema)
   const hasVerification = /model\s+Verification\b/.test(schema)
   const nextAuthJwt =
     /model\s+VerificationToken\b/.test(schema) ||
@@ -91,6 +90,7 @@ export function isBetterAuthPrismaSchema(schema: string): boolean {
     hasSessionModel &&
     hasSessionTokenField &&
     hasAccount &&
+    hasProviderId &&
     hasVerification &&
     !nextAuthJwt
   )

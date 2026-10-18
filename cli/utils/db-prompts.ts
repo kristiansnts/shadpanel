@@ -11,11 +11,33 @@ export interface DatabaseInitAnswers {
   installPrisma: boolean
 }
 
-export async function promptDatabaseInit(prismaAlreadyInstalled: boolean = false): Promise<DatabaseInitAnswers | null> {
+export type PromptDatabaseInitOptions = {
+  /** Skip prompts; use driver (default sqlite) and install Prisma unless already present. */
+  yes?: boolean
+  driver?: DatabaseDriver
+  packageManager?: PackageManager
+  installPrisma?: boolean
+}
+
+export async function promptDatabaseInit(
+  prismaAlreadyInstalled: boolean = false,
+  options: PromptDatabaseInitOptions = {}
+): Promise<DatabaseInitAnswers | null> {
   console.log("\n🗄️  Database Configuration\n")
 
   if (prismaAlreadyInstalled) {
     console.log("✓ Prisma is already installed in this project\n")
+  }
+
+  if (options.yes) {
+    const driver = options.driver ?? "sqlite"
+    const packageManager = options.packageManager ?? "npm"
+    const installPrisma =
+      options.installPrisma !== undefined
+        ? options.installPrisma
+        : !prismaAlreadyInstalled
+    console.log(`Using defaults (--yes): driver=${driver}, installPrisma=${installPrisma}\n`)
+    return { driver, packageManager, installPrisma }
   }
 
   const questions: prompts.PromptObject[] = [
