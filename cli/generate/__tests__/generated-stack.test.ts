@@ -8,7 +8,11 @@ import { emitPrismaClient, PRISMA_CLIENT_RELATIVE_PATH } from "../emit-prisma-cl
 import { emitResource } from "../emit-resource"
 import { emitSchema } from "../emit-schema"
 import { parsePrismaSchema } from "../parse-prisma"
-import { nextMajor } from "../stack"
+import {
+  GENERATED_ESLINT_CONFIG_NEXT,
+  GENERATED_NEXT,
+  nextMajor,
+} from "../stack"
 import {
   copyAuthTemplate,
   copyBaseTemplate,
@@ -61,10 +65,33 @@ describe("generated stack (BR-20260831-1) — fails if Next 15 / NextAuth v4 rem
   it("package.json.template is Next major 16 with Better Auth and no next-auth", () => {
     const pkg = JSON.parse(PKG_TEMPLATE.replace(/\{\{PROJECT_NAME\}\}/g, "qa-app"))
     expect(nextMajor(pkg.dependencies.next)).toBe(16)
+    expect(pkg.dependencies.next).toBe(GENERATED_NEXT)
+    expect(pkg.dependencies.next).toBe("^16.4.1")
     expect(pkg.dependencies["next-auth"]).toBeUndefined()
     expect(pkg.dependencies["better-auth"]).toBeTruthy()
     expect(nextMajor(pkg.devDependencies["eslint-config-next"])).toBe(16)
+    expect(pkg.devDependencies["eslint-config-next"]).toBe(GENERATED_ESLINT_CONFIG_NEXT)
+    expect(pkg.devDependencies["eslint-config-next"]).toBe("^16.4.1")
     expect(JSON.stringify(pkg)).not.toMatch(/next-auth/)
+  })
+
+  it("legacy create-shadpanel-next template cannot resolve Next 15 below 15.5.28", () => {
+    const legacy = JSON.parse(
+      readFileSync(
+        path.join(
+          process.cwd(),
+          "packages",
+          "create-shadpanel-next",
+          "templates",
+          "config",
+          "package.json.template"
+        ),
+        "utf-8"
+      ).replace(/\{\{PROJECT_NAME\}\}/g, "legacy-app")
+    )
+    expect(legacy.dependencies.next).toBe("^15.5.28")
+    expect(legacy.devDependencies["eslint-config-next"]).toBe("^15.5.28")
+    expect(nextMajor(legacy.dependencies.next)).toBe(15)
   })
 
   it("auth templates ship proxy.ts (Node) and drop NextAuth middleware / [...nextauth]", () => {
@@ -150,6 +177,8 @@ describe("init + db init + resource on the new stack", () => {
 
     const pkg = JSON.parse(readFileSync(path.join(dir, "package.json"), "utf-8"))
     expect(nextMajor(pkg.dependencies.next)).toBe(16)
+    expect(pkg.dependencies.next).toBe("^16.4.1")
+    expect(pkg.devDependencies["eslint-config-next"]).toBe("^16.4.1")
     expect(pkg.dependencies["next-auth"]).toBeUndefined()
     expect(pkg.dependencies["better-auth"]).toBeTruthy()
 
@@ -256,5 +285,7 @@ model Post {
     expect(pkg.dependencies["next-auth"]).toBeUndefined()
     expect(pkg.dependencies["better-auth"]).toBeUndefined()
     expect(nextMajor(pkg.dependencies.next)).toBe(16)
+    expect(pkg.dependencies.next).toBe("^16.4.1")
+    expect(pkg.devDependencies["eslint-config-next"]).toBe("^16.4.1")
   })
 })

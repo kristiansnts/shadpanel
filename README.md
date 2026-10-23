@@ -331,7 +331,7 @@ ShadPanel uses **prefixed naming** for form and table components:
 ## Requirements
 
 - **Node.js** 20.9.0 or higher (Next.js 16)
-- **Next.js** 16.0.0 or higher
+- **Next.js** 16.4.1 or higher
 - **React** 19.0.0 or higher
 
 ## Tech Stack

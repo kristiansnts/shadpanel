@@ -20,6 +20,7 @@ describe("README stack smoke", () => {
 
   it("current stack is Next.js 16 + Better Auth, not Next 15 or NextAuth v4", () => {
     expect(README).toMatch(/Next\.js 16/)
+    expect(README).toMatch(/16\.4\.1 or higher/)
     expect(README).toMatch(/Better Auth/)
     expect(README).not.toMatch(/Next\.js 15/)
     expect(README).not.toMatch(/NextAuth v4|NextAuth\.js v4|next-auth/)
