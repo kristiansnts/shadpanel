@@ -4,24 +4,24 @@ Manual steps for publishing a version. The [Release workflow](.github/workflows/
 
 ## Prerequisites
 
-- `package.json` `version` matches the intended release (e.g. `1.6.0`).
+- `package.json` `version` matches the intended release (e.g. `1.6.1`).
 - `CHANGELOG.md` has a top entry for that version (Keep a Changelog).
 - CI on `main` is green (`npm ci` → `npm test` → `npm run build:cli`).
 - Repo secret `NPM_TOKEN` is set (npm automation/granular token with publish access to `shadpanel`).
 - You will **not** push to `main` as part of tagging if release commits already landed via PR.
 
-## Publish 1.6.0
+## Publish 1.6.1
 
-From a clean checkout of `main` at the release commit:
+From a clean checkout of `main` at the 1.6.1 release commit (after this prep PR is merged):
 
 ```bash
 # 1) Confirm version
-node -p "require('./package.json').version"   # → 1.6.0
+node -p "require('./package.json').version"   # → 1.6.1
 git status                                    # clean
 
 # 2) Create and push the release tag (this triggers .github/workflows/release.yml)
-git tag -a v1.6.0 -m "ShadPanel 1.6.0"
-git push origin v1.6.0
+git tag -a v1.6.1 -m "ShadPanel 1.6.1"
+git push origin v1.6.1
 ```
 
 The workflow will:
@@ -94,7 +94,7 @@ npm pack
 
 - [ ] Version + CHANGELOG + compare links updated
 - [ ] Optional backfill tags `v1.4.0` / `v1.4.1` / `v1.5.0`
-- [ ] `git tag -a v1.6.0` + `git push origin v1.6.0`
+- [ ] `git tag -a v1.6.1` + `git push origin v1.6.1`
 - [ ] Confirm GitHub Actions “Release” job published npm + GitHub Release
-- [ ] Confirm `npm view shadpanel version` → `1.6.0`
+- [ ] Confirm `npm view shadpanel version` → `1.6.1`
 - [ ] Optionally `npm deprecate create-shadpanel-next@*`

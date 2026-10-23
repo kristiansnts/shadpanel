@@ -1,7 +1,7 @@
 name: Release
 
 # Publishes to npm and creates a GitHub Release only when a maintainer
-# pushes a version tag (e.g. v1.6.0). Does not run on push to main/PRs.
+# pushes a version tag (e.g. v1.6.1). Does not run on push to main/PRs.
 on:
   push:
     tags:

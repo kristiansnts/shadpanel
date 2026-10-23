@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] / 1.6.1
+## [1.6.1] - 2026-10-23
+
+Security floor for generated Next.js ([#17](https://github.com/kristiansnts/shadpanel/pull/17)). Stack unchanged: **Next.js 16.4.1+**, **Better Auth**, **Prisma 6.18**. Package version is **1.6.1**.
 
 ### Security
 
@@ -122,7 +124,7 @@ Hygiene + docs release on the then-current templates ([#11](https://github.com/k
 - `db generate` no longer interpolates `{{DATABASE_URL}}` from a user-project `.template` into `schema.prisma`. Edit `prisma/schema.prisma` and use `env("DATABASE_URL")`.
 - Re-running `resource` without `--force` leaves existing pages in place instead of failing the run.
 
-[Unreleased]: https://github.com/kristiansnts/shadpanel/compare/v1.6.0...HEAD
+[1.6.1]: https://github.com/kristiansnts/shadpanel/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/kristiansnts/shadpanel/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/kristiansnts/shadpanel/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/kristiansnts/shadpanel/compare/v1.4.0...v1.4.1
