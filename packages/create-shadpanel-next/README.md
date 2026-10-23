@@ -8,7 +8,7 @@
 >
 > Or install globally and run `shadpanel init <name>`. This package is no longer the supported path.
 
-`create-shadpanel-next` used to scaffold a Next.js 15 / React 19 / NextAuth.js v4 admin panel. New projects should use `shadpanel init` (Next.js 16 + Better Auth), then `shadpanel db init` and `shadpanel resource <Model>`.
+`create-shadpanel-next` used to scaffold a Next.js 15 / React 19 / NextAuth.js v4 admin panel. If you still invoke it, the leftover template now requires **Next.js 15.5.28+** so installs cannot resolve versions affected by GHSA-2464-fhr4-w9xw / GHSA-p3m5-59mp-jv5r. New projects should use `shadpanel init` (Next.js 16.4.1+ + Better Auth), then `shadpanel db init` and `shadpanel resource <Model>`.
 
 ## What this used to do
 
@@ -23,7 +23,7 @@ If you still invoke it, it prints a deprecation warning and continues the old in
 
 ## Technology stack (historical)
 
-- **Framework**: Next.js 15 (App Router)
+- **Framework**: Next.js 15.5.28+ (App Router)
 - **React**: v19
 - **Authentication**: NextAuth.js v4
 - **Styling**: Tailwind CSS v4

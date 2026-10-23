@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] / 1.6.1
+
+### Security
+
+- Raise the generated Next.js floor so new `shadpanel init` apps cannot resolve a vulnerable `next` release. Templates now pin `next` and `eslint-config-next` to **^16.4.1** (covers GHSA-673q-mjm6-r5xr, GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r; also above GHSA-h694-7cp9-m8p3).
+- Legacy `create-shadpanel-next` template now pins `next` and `eslint-config-next` to **^15.5.28**.
+- Existing apps: run `npm i next@latest`.
+
 ## [1.6.0] - 2026-10-18
 
 Brief **BR-20260901-1** ([#15](https://github.com/kristiansnts/shadpanel/pull/15)). **Resource 2.0** for `shadpanel resource`. Stack unchanged: **Next.js 16**, **Better Auth**, **Prisma 6.18**. Not Prisma 7, not 2FA, not per-resource policies, not M2M RBAC.
@@ -114,6 +122,7 @@ Hygiene + docs release on the then-current templates ([#11](https://github.com/k
 - `db generate` no longer interpolates `{{DATABASE_URL}}` from a user-project `.template` into `schema.prisma`. Edit `prisma/schema.prisma` and use `env("DATABASE_URL")`.
 - Re-running `resource` without `--force` leaves existing pages in place instead of failing the run.
 
+[Unreleased]: https://github.com/kristiansnts/shadpanel/compare/v1.6.0...HEAD
 [1.6.0]: https://github.com/kristiansnts/shadpanel/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/kristiansnts/shadpanel/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/kristiansnts/shadpanel/compare/v1.4.0...v1.4.1
